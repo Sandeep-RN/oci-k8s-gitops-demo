@@ -1,16 +1,21 @@
-# 0008. kube-prometheus-stack and a redirect SLO with a burn-rate alert
+# 0008. kube-prometheus-stack and a redirect SLO with burn-rate alerts
 
-Status: Accepted (2026-10-21)
+Status: Accepted (2026-10-21, revised 2026-10-21 after review)
 
 ## Context
-A generic "CPU above 80%" alert says little about user experience. The demo should show reliability thinking, and the node has limited memory.
+A generic "CPU above 80%" alert says little about user experience. The demo should show reliability thinking, and the node has limited memory and disk.
 
 ## Decision
-Deploy kube-prometheus-stack with trimmed resource limits and about 3 days of retention. Loki is out of core scope. Define one SLO on the redirect path: 99.5% of redirects succeed and 95% finish in under 200 ms, over 30 days. The custom alert is an error-budget burn-rate alert, delivered to Discord by Alertmanager (webhook stored as a SealedSecret), with a runbook. A small k6 CronJob and blackbox-exporter probes generate steady traffic, which also keeps the instance above Oracle's idle-reclamation thresholds.
+- Deploy kube-prometheus-stack with trimmed resource limits and about 8 days of retention. Loki is out of core scope.
+- One SLO on the redirect path, over a **rolling 7 days**: 99.5% of redirects succeed (availability SLI) and 95% finish in under 200 ms (latency SLI). The request-duration histogram must include a 0.2 s bucket.
+- Alerting uses **multi-window, multi-burn-rate** rules (a fast window for sudden outages, a slow one for gradual burn) on the availability SLI, delivered to Discord by Alertmanager (webhook stored as a SealedSecret), with a runbook. The latency SLI is shown on the dashboard.
+- An **external probe** (a scheduled GitHub Actions job hitting `https://demo.sandeeprn.in` every few minutes) measures what a real user sees. An in-cluster k6 CronJob generates load for the dashboard and HPA.
 
 ## Consequences
-- The dashboard and SLO have real data.
-- Synthetic traffic must stay well under the load balancer's bandwidth limit.
+- Seven days fits the retention a 12 GB node can afford; 30 days would need about four times the storage.
+- In-cluster probes of the public hostname are avoided because of hairpin routing (ADR 0004).
+- Idle reclamation: Oracle reclaims only if CPU, network and memory are all under 20%. Network is measured against the VM's own bandwidth, so synthetic traffic will never reach it; what actually keeps the node safe is memory, since this stack uses well over 20% of 12 GB. The load still helps CPU.
+- The NLB has no 10 Mbps cap (that applies to the Flexible LB), but load tests stay modest anyway on a 2 OCPU node.
 
 ## At scale
-Multi-window burn-rate alerts per service, centralised logs and traces, on-call paging.
+SLOs per service, centralised logs and traces, on-call paging, error budget policies.

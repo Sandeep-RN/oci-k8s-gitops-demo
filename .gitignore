@@ -24,3 +24,6 @@ kubeconfig*
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Terraform backend config holds bucket/namespace/region; commit only the example
+backend.hcl
