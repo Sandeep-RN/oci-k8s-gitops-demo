@@ -1,0 +1,26 @@
+# Terraform state and secrets: repos are PUBLIC
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+*.tfvars.json
+!example.tfvars
+override.tf
+override.tf.json
+*.tfplan
+
+# Credentials and cluster access
+*.pem
+*.key
+*.pub
+.oci/
+kubeconfig*
+*.kubeconfig
+.env
+.env.*
+
+# Editor / OS
+.vscode/
+.DS_Store
+Thumbs.db
