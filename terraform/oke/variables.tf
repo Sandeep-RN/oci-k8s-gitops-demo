@@ -47,7 +47,10 @@ variable "node_image_name" {
 variable "node_shape" {
   description = "Worker shape. x86 Flex only (ADR 0015)."
   type        = string
-  default     = "VM.Standard.E4.Flex"
+  # E5, not E4: on 2026-10-23 E4.Flex was OUT_OF_HOST_CAPACITY in every fault
+  # domain of the home region (checked with `oci compute compute-capacity-report
+  # create`), which made node pool creation fail with "exceeded max retry count".
+  default = "VM.Standard.E5.Flex"
 
   # Guardrail: A1 nodes here would count toward the 2 OCPU / 12 GB Always Free
   # limit; exceeding it at trial end disables ALL A1 instances, including the

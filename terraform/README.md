@@ -48,3 +48,19 @@ The script creates a throwaway SSH key and a Bastion port-forwarding session
 (max 3 h), writes a kubeconfig outside the repo pointing at `127.0.0.1` with
 `tls-server-name` set to the API's private IP, and deletes the session on exit.
 `oci` must be on PATH, because kubectl calls it to fetch tokens.
+
+### Troubleshooting: node pool fails with "Work request exceeded max retry count"
+
+If the work-request logs show `Validating nodes: 0 provisioned, 0 provisioning`
+until it gives up, the shape usually has no host capacity. Check, per fault
+domain, without launching anything:
+
+```
+oci compute compute-capacity-report create --compartment-id <tenancy-ocid> \
+  --availability-domain <ad-name> \
+  --shape-availabilities '[{"instanceShape":"VM.Standard.E5.Flex","instanceShapeConfig":{"ocpus":1,"memoryInGBs":8},"faultDomain":"FAULT-DOMAIN-1"}]'
+```
+
+`OUT_OF_HOST_CAPACITY` means pick another x86 Flex shape whose service limit is
+above zero (`oci limits value list --service-name compute`). The same check
+applies to the A1 node.
