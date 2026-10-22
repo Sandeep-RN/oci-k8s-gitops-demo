@@ -36,3 +36,15 @@ terraform apply oke.tfplan          # ~10-15 min; starts billing (~$2/day)
 - Every resource is tagged `lifecycle = ephemeral-oke`, `teardown_by = 2026-11-15`
   for the Cost Analysis check after `terraform destroy`.
 - Outputs holding OCIDs or IPs are sensitive; read with `terraform output -raw <name>`.
+
+### kubectl access (private API via Bastion)
+
+```
+scripts/oke-tunnel.sh                       # holds the tunnel open; Ctrl+C closes it
+kubectl --kubeconfig ~/.kube/oke-demo.kubeconfig get nodes   # in another terminal
+```
+
+The script creates a throwaway SSH key and a Bastion port-forwarding session
+(max 3 h), writes a kubeconfig outside the repo pointing at `127.0.0.1` with
+`tls-server-name` set to the API's private IP, and deletes the session on exit.
+`oci` must be on PATH, because kubectl calls it to fetch tokens.
