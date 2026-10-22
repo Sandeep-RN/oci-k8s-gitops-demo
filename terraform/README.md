@@ -18,3 +18,21 @@ scripts/bootstrap-state.sh     # idempotent; writes git-ignored backend.hcl and 
 
 Auth uses short-lived session tokens (`auth = "SecurityToken"`), not a
 long-lived API key on disk. Refresh with `oci session refresh --profile oke-demo`.
+
+## OKE target (`oke/`, ADR 0015)
+
+```
+cd terraform/oke
+terraform init -backend-config=../backend.hcl
+terraform plan -out=oke.tfplan      # expect 15 resources on first run
+terraform apply oke.tfplan          # ~10-15 min; starts billing (~$2/day)
+```
+
+- Basic cluster (free control plane), 2 × `VM.Standard.E4.Flex` 1 OCPU / 8 GB,
+  one per fault domain. A variable validation rejects A1 shapes.
+- Private API endpoint and private workers. kubectl goes through OCI Bastion
+  (ADR 0010); `bastion_client_cidr` in `terraform.tfvars` must be your current
+  public IP as a /32.
+- Every resource is tagged `lifecycle = ephemeral-oke`, `teardown_by = 2026-11-15`
+  for the Cost Analysis check after `terraform destroy`.
+- Outputs holding OCIDs or IPs are sensitive; read with `terraform output -raw <name>`.
