@@ -10,6 +10,11 @@
 #   3. Writes a kubeconfig (outside the repo) pointing at https://127.0.0.1:LOCAL_PORT,
 #      with tls-server-name set to the API's private IP so TLS still verifies.
 #   4. Holds the tunnel open in the foreground. Ctrl+C deletes the session and key.
+#      A hard kill (SIGKILL, closed terminal) cannot run the cleanup; the session
+#      then expires on its own at the TTL. Sessions are free either way.
+#
+# OpenSSH 10 may warn "connection is not using a post-quantum key exchange"
+# for the Bastion host. It is informational; the tunnel works.
 #
 # Usage:  scripts/oke-tunnel.sh
 #         then, in another terminal:  kubectl --kubeconfig ~/.kube/oke-demo.kubeconfig get nodes
