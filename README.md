@@ -4,9 +4,10 @@ Infrastructure, architecture decisions and runbooks for a public demo of
 Kubernetes, Docker, CI/CD, GitOps and observability, running entirely on
 **Oracle Cloud Always Free** (target cost: $0/month).
 
-> **Status:** Phase 1 (infrastructure and cluster) is in progress. The live
-> URL (`demo.sandeeprn.in`) is planned, not up yet. This README describes the
-> target design; ADRs record what has been decided.
+> **Status:** The CI → GitOps → ArgoCD pipeline is live on a short-lived OKE
+> target (ADR 0015). The Always Free k3s node is waiting for A1 capacity, and
+> the live URL (`demo.sandeeprn.in`) is not up yet. See
+> **[docs/architecture.md](docs/architecture.md)** for what is built and verified.
 
 ## The three repos
 
@@ -29,8 +30,8 @@ Internet -> Cloudflare DNS (DNS only)
   Terraform. State lives in a versioned Object Storage bucket (ADR 0003).
 - **Cluster:** Ubuntu 24.04 aarch64, single-node k3s, cloud-init fixes the
   image's firewall rules (ADR 0001, 0002, 0012).
-- **Delivery:** GitHub Actions builds, scans (Trivy) and pushes an arm64 image,
-  then opens a tag-bump PR in the gitops repo; ArgoCD syncs it (ADR 0009).
+- **Delivery:** GitHub Actions builds, scans (Trivy) and pushes a multi-arch
+  image, then opens a tag-bump PR in the gitops repo; ArgoCD syncs it (ADR 0009).
 - **Edge and secrets:** Traefik Ingress, cert-manager with Cloudflare DNS-01,
   Sealed Secrets (ADR 0004, 0005, 0006).
 - **Observability:** kube-prometheus-stack, a 7-day redirect SLO with
