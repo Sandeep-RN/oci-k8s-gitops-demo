@@ -58,8 +58,12 @@ redact() {
   tr -d '\r' | sed -E 's/ocid1\.[a-z0-9_.-]+/<ocid>/g; s/[0-9]{1,3}(\.[0-9]{1,3}){3}/<ip>/g'
 }
 
+# </dev/null matters: with an expired session the OCI CLI stops to ask "Do you
+# want to re-authenticate? [Y/n]". Our calls hide its output, so without this
+# the script would sit silently waiting for a keypress. With stdin closed the
+# CLI aborts at once and check_auth reports the real problem.
 oci_cmd() {
-  "$OCI_CLI" --config-file "$CONFIG_FILE" --profile "$PROFILE" --auth "$AUTH" "$@" | tr -d '\r'
+  "$OCI_CLI" --config-file "$CONFIG_FILE" --profile "$PROFILE" --auth "$AUTH" "$@" </dev/null | tr -d '\r'
 }
 
 tfvar() { # tfvar <name>: read a simple string/number value from terraform.tfvars
@@ -119,8 +123,13 @@ plan_is_safe && rc=0 || rc=$?
 [ "$rc" -eq 2 ] && exit 0
 if [ "${YES:-0}" != "1" ]; then
   printf 'The plan above will be applied automatically when capacity appears. Continue? [yes/N] '
-  read -r answer
-  [ "$answer" = "yes" ] || die "aborted"
+  read -r answer || answer=""
+  # Windows terminals can leave a trailing CR on the line; strip it and ignore case.
+  answer="$(printf '%s' "$answer" | tr -d '\r' | tr '[:upper:]' '[:lower:]')"
+  case "$answer" in
+    yes | y) ;;
+    *) die "aborted (got '$answer'; type yes, or run with YES=1)" ;;
+  esac
 fi
 
 # --- Loop ----------------------------------------------------------------------------
@@ -131,7 +140,7 @@ while :; do
     die "gave up after ${MAX_HOURS}h without capacity"
   fi
   if [ $(( now - last_refresh )) -ge "$REFRESH_EVERY" ]; then
-    "$OCI_CLI" session refresh --config-file "$CONFIG_FILE" --profile "$PROFILE" >/dev/null 2>&1 || true
+    "$OCI_CLI" session refresh --config-file "$CONFIG_FILE" --profile "$PROFILE" </dev/null >/dev/null 2>&1 || true
     last_refresh=$now
   fi
   check_auth || die "OCI session expired. Run: oci session authenticate --profile $PROFILE (then re-run this script)"
