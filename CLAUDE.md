@@ -17,6 +17,18 @@ Workspace-level rules and PLAN.md live one folder up. Read them first.
 
 GitHub Issues on Sandeep-RN/oci-k8s-gitops-demo via the `gh` CLI; this repo tracks work for all three repos. See `docs/agents/issue-tracker.md`.
 
+### Tracking work (milestones)
+
+Every task, in any of the three repos, starts from an issue here, in the
+milestone of its phase (Phase 1, 2a, 2b, 3, or "OKE target"). If no issue
+exists, create one before starting. Then:
+
+- PR descriptions close it with the full reference, which works across repos:
+  `Closes Sandeep-RN/oci-k8s-gitops-demo#N`.
+- Work that needs a check after merge (a deploy, a cluster test) keeps the
+  issue open until the check passes; close it with a comment giving the result.
+- `post-idea` issues are not work items and get no milestone.
+
 ### Triage labels
 
 Default vocabulary: needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix. See `docs/agents/triage-labels.md`.
