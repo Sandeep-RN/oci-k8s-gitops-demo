@@ -24,3 +24,29 @@ Default vocabulary: needs-triage, needs-info, ready-for-agent, ready-for-human, 
 ### Domain docs
 
 Single-context: one GLOSSARY.md and docs/adr/ at the repo root. See `docs/agents/domain.md`.
+
+## Post ideas
+
+The owner publishes a weekly post from real problems hit while building this
+project. Capture them as they happen, as GitHub issues labelled `post-idea` in
+this repo. That label is separate from the triage vocabulary above; do not
+add triage labels to post ideas.
+
+- **When to offer:** after resolving a non-obvious problem, hitting a
+  surprising gotcha, or making a decision with a real trade-off, offer to log
+  it. Ask first; never log silently.
+- **Format:** six sections, in order: **Problem**, **What I tried**, **What
+  fixed it**, **What I still don't know**, **Evidence** (a commit, PR, ADR or
+  file path), **Angle** (a one-line post hook). Fill only what the sources
+  support. If nothing is fixed yet, say "Not fixed yet". If there is no real
+  open question, write "TBD (owner)" under "What I still don't know"; never
+  invent one.
+- **Public repo:** never put secrets, real OCIDs, tenancy or Object Storage
+  namespaces, IP addresses, key fingerprints, account numbers, or anything
+  about the owner's employer in an issue. Use obviously fake values
+  (`ocid1.tenancy.oc1..aaaafake`, `203.0.113.10`).
+- **Only real events:** log only what actually happened, with the actual
+  outcome. Do not invent or round up results; "unresolved" is a valid answer.
+- **No duplicates:** search existing `post-idea` issues first
+  (`gh issue list -R Sandeep-RN/oci-k8s-gitops-demo --label post-idea --state all`).
+- Logging an idea is not publishing it. Never post anything anywhere.
