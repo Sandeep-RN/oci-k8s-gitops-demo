@@ -1,0 +1,68 @@
+#cloud-config
+# First-boot setup for the single k3s node. Runs once, as root.
+# Keep $${...} escaped: this file is a Terraform template.
+#
+#   1. fix Oracle Ubuntu's iptables REJECT rules (ADR 0012)
+#   2. SSH: key-only, no root login (ADR 0010)
+#   3. install a pinned k3s with its built-in Traefik and ServiceLB
+#
+# Progress and errors: /var/log/bootstrap-node.log on the node.
+write_files:
+  - path: /etc/ssh/sshd_config.d/10-hardening.conf
+    permissions: "0644"
+    content: |
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PermitRootLogin no
+
+  - path: /usr/local/sbin/bootstrap-node.sh
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      exec > >(tee -a /var/log/bootstrap-node.log) 2>&1
+      echo "bootstrap start: $(date -u +%FT%TZ)"
+
+      # 1. Oracle's Ubuntu image ships iptables rules with REJECT entries in
+      # INPUT and FORWARD. They block ports 80/443 and break k3s pod networking.
+      # Open the host firewall and let the OCI security list (Terraform) be the
+      # single source of truth for inbound traffic. Done before k3s, which adds
+      # its own chains at runtime. Persisted so a reboot does not bring the
+      # REJECT rules back.
+      iptables -P INPUT ACCEPT
+      iptables -P FORWARD ACCEPT
+      iptables -F INPUT
+      iptables -F FORWARD
+      if command -v netfilter-persistent >/dev/null 2>&1; then
+        netfilter-persistent save
+      else
+        echo "WARN: netfilter-persistent missing; firewall change will not survive a reboot"
+      fi
+
+      # 2. Apply the SSH hardening drop-in (written above). Validate first so a
+      # typo cannot lock us out.
+      sshd -t
+      systemctl restart ssh
+
+      # 3. k3s, pinned (INSTALL_K3S_VERSION). Traefik and ServiceLB stay enabled
+      # (ADR 0004). The API certificate already covers 127.0.0.1, which is what
+      # kubectl uses through the SSH tunnel. Skipped if already installed, so a
+      # re-run is harmless.
+      if ! command -v k3s >/dev/null 2>&1; then
+        curl -sfL https://get.k3s.io \
+          | INSTALL_K3S_VERSION='${k3s_version}' sh -s - server --write-kubeconfig-mode 600
+      fi
+
+      # Wait for the node to register so the log shows the outcome.
+      for _ in $(seq 1 60); do
+        if k3s kubectl get nodes 2>/dev/null | grep -q ' Ready'; then
+          echo "node Ready"
+          break
+        fi
+        sleep 5
+      done
+      k3s kubectl get nodes || true
+      echo "bootstrap done: $(date -u +%FT%TZ)"
+
+runcmd:
+  - [bash, /usr/local/sbin/bootstrap-node.sh]
