@@ -1,2 +1,5 @@
 # Shell scripts must keep LF endings or bash fails on Windows checkouts.
 *.sh text eol=lf
+
+# cloud-init is rendered into user_data and run by bash on the node: CRLF would break it.
+*.tftpl text eol=lf
