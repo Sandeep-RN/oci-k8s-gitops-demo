@@ -264,3 +264,4 @@ multi-node behaviour instead ([drain evidence](evidence/oke-drain-2026-10-24.md)
 | [0013](adr/0013-dns-and-reserved-ip.md) | Reserved public IP and Terraform-managed DNS |
 | [0014](adr/0014-admin-ui-access.md) | Admin UIs only through port-forward |
 | [0015](adr/0015-oke-ephemeral-second-target.md) | OKE as a short-lived second deploy target |
+| [0016](adr/0016-readiness-checks-pod-local-state-only.md) | Readiness checks pod-local state only, not the shared database |
