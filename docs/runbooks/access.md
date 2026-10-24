@@ -133,6 +133,8 @@ First things to try:
 - **Alertmanager**: active alerts. `Watchdog` always fires on purpose; it
   proves the alert pipeline works.
 
+Alerts and what to do about them: [redirect SLO runbook](slo-redirect-availability.md).
+
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
