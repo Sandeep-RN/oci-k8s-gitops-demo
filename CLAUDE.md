@@ -35,9 +35,12 @@ add triage labels to post ideas.
 - **When to offer:** after resolving a non-obvious problem, hitting a
   surprising gotcha, or making a decision with a real trade-off, offer to log
   it. Ask first; never log silently.
-- **Format:** four sections: **Problem**, **What I tried**, **What fixed it**,
-  **What I still don't know**. Then one line: `Evidence:` a commit, PR, ADR or
-  file path.
+- **Format:** six sections, in order: **Problem**, **What I tried**, **What
+  fixed it**, **What I still don't know**, **Evidence** (a commit, PR, ADR or
+  file path), **Angle** (a one-line post hook). Fill only what the sources
+  support. If nothing is fixed yet, say "Not fixed yet". If there is no real
+  open question, write "TBD (owner)" under "What I still don't know"; never
+  invent one.
 - **Public repo:** never put secrets, real OCIDs, tenancy or Object Storage
   namespaces, IP addresses, key fingerprints, account numbers, or anything
   about the owner's employer in an issue. Use obviously fake values
