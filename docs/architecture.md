@@ -167,7 +167,9 @@ LB, NAT, Bastion and VCN cost nothing. The trial credit is SGD 400, expiring
 
 **Workload placement:** two backend replicas, `DoNotSchedule` spread on
 hostname (one per node, so one per fault domain), PDB `minAvailable: 1`, and
-rolling updates with `maxUnavailable: 0`. The drain proof is tracked in #18.
+rolling updates with `maxUnavailable: 0`. A node drain on this target kept the
+service up (370 requests, 0 failures) and the PDB blocked eviction of the last
+pod: [drain evidence](evidence/oke-drain-2026-10-24.md).
 
 ## 6. Access model
 
@@ -240,7 +242,7 @@ flowchart LR
 
 There is no node-level high availability: a single node cannot honour a PDB
 during a drain. The README will say so plainly. The OKE target demonstrates the
-multi-node behaviour instead.
+multi-node behaviour instead ([drain evidence](evidence/oke-drain-2026-10-24.md)).
 
 ## 10. Decision index
 
