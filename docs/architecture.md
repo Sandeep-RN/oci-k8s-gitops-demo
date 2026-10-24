@@ -188,6 +188,7 @@ flowchart LR
   kubeconfig outside the repo, and deletes the session on Ctrl+C.
 - **Admin UIs** (ArgoCD, later Grafana) are reachable only by port-forward,
   never exposed (ADR 0014).
+- Step-by-step commands: [access runbook](runbooks/access.md).
 
 ## 7. Infrastructure as code
 
