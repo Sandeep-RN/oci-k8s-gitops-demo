@@ -48,7 +48,7 @@ scripts/         state bootstrap, OKE tunnel, A1 capacity watcher
 docs/adr/        Architecture decision records (0001-0018)
 docs/runbooks/   Access, alerts, backups and restore, Sealed Secrets keys
 docs/evidence/   Write-ups of tests run on the cluster (node drain)
-.github/         external probe (every 5 min), gitleaks history scan
+.github/         external probe (about every 15 min), gitleaks history scan
 GLOSSARY.md      Project terms
 ```
 
