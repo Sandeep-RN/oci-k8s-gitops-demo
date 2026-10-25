@@ -98,10 +98,13 @@ mistake). Restore into a scratch database first (drill steps 1-3), check it,
 then replace the live table:
 
 ```bash
-kubectl -n link-shortener exec -i postgres-0 -- sh -c 'pg_restore --no-owner --clean --if-exists --exit-on-error -U "$POSTGRES_USER" -d linkshortener' < restore.pgc
+kubectl -n link-shortener exec -i postgres-0 -- sh -c 'pg_restore --no-owner --role=linkshortener_app --clean --if-exists --exit-on-error -U "$POSTGRES_USER" -d linkshortener' < restore.pgc
 ```
 
 `--clean --if-exists` drops and recreates the `links` table from the dump.
+`--role=linkshortener_app` makes the restored table belong to the app's role
+(ADR 0018). Without it the table belongs to the admin and the app gets
+"permission denied" until the next ArgoCD sync hands it back.
 Requests during those seconds may get 503; the app recovers on its own.
 
 **B. Volume lost** (the PVC or block volume is gone). The StatefulSet starts
@@ -127,4 +130,6 @@ still redirects.
   ADR 0007 "At scale".
 - The bucket has `prevent_destroy`, and `terraform/shared` is separate from
   the cluster roots: tearing down OKE (#13) leaves the backups in place.
-- The app connects as a Postgres superuser (#65); a restore uses the same role.
+- The app connects as its own non-superuser role, `linkshortener_app` (ADR 0018).
+  Backups and restores use the admin role (`POSTGRES_USER`); the restore
+  switches to the app role for the objects it creates.

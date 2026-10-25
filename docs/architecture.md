@@ -262,6 +262,7 @@ oci-k8s-gitops-demo/
 | Secrets in Git | gitleaks with OCI rules, as a pre-commit hook and as a full-history CI job in every repo. tfvars, state, backend.hcl and kubeconfig are git-ignored. Outputs holding OCIDs or IPs are marked sensitive. Only SealedSecrets may be committed, and CI rejects plain `Secret` manifests |
 | Supply chain | Actions pinned by SHA; checksum-verified tool downloads; Trivy gate before push; pinned dependency versions |
 | Runtime | Non-root UID 10001, read-only root filesystem, all capabilities dropped, seccomp `RuntimeDefault`, no service-account token mounted |
+| Database | The backend uses its own non-superuser role that owns only its table; the superuser is kept for the server, backups and the role-setup Job (ADR 0018) |
 | Network | Private workers and API; Bastion allowlisted to one /32; public exposure only through the LB on 80/443 |
 | Cloud auth | Short-lived session tokens; a dedicated compartment. In-cluster access to OCI is node identity with a write-only policy on one bucket (ADR 0017) |
 | Cost | Budget with 50% and 100% actual-spend alerts; an A1 guardrail in Terraform; teardown date tagged on every resource |
@@ -313,3 +314,4 @@ multi-node behaviour instead ([drain evidence](evidence/oke-drain-2026-10-24.md)
 | [0015](adr/0015-oke-ephemeral-second-target.md) | OKE as a short-lived second deploy target |
 | [0016](adr/0016-readiness-checks-pod-local-state-only.md) | Readiness checks pod-local state only, not the shared database |
 | [0017](adr/0017-backup-auth-instance-principals-write-only.md) | Backups use instance principals with a write-only policy |
+| [0018](adr/0018-app-database-role-least-privilege.md) | The backend connects with its own non-superuser database role |
