@@ -5,6 +5,7 @@ One root per lifecycle, each with its own state key in the shared bucket:
 | Root | What | Lifecycle |
 |------|------|-----------|
 | `oke/` | Short-lived OKE target (ADR 0015) | Destroy by 2026-11-15 |
+| `shared/` | Postgres backup bucket, lifecycle rule, write-only IAM for the nodes (ADR 0017) | Long-lived; bucket has `prevent_destroy` |
 | `node/` (later) | Always Free k3s node, NLB (ADR 0001) | Long-lived, `prevent_destroy` |
 
 ## One-time bootstrap (ADR 0003)
@@ -64,3 +65,18 @@ oci compute compute-capacity-report create --compartment-id <tenancy-ocid> \
 `OUT_OF_HOST_CAPACITY` means pick another x86 Flex shape whose service limit is
 above zero (`oci limits value list --service-name compute`). The same check
 applies to the A1 node.
+
+## Shared resources (`shared/`, ADR 0017)
+
+Outlives any one cluster. Copy `tenancy_ocid`, `compartment_ocid` and `region`
+from `oke/terraform.tfvars` into a git-ignored `shared/terraform.tfvars`, then:
+
+```
+cd terraform/shared
+terraform init -backend-config=../backend.hcl
+terraform plan -out=shared.tfplan   # expect 5 resources: bucket, lifecycle rule, dynamic group, 2 policies
+terraform apply shared.tfplan
+```
+
+The dynamic group needs permission to manage IAM at the tenancy root
+(tenancy administrators have it).
