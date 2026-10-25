@@ -83,17 +83,44 @@ back out. Don't `kubectl set image` or `rollout undo`: ArgoCD would revert it
 
 ## Testing the alert on purpose
 
-Covered by promtool unit tests in CI. On a live cluster, a Postgres outage
-under steady traffic makes the fast alert fire:
+Covered by promtool unit tests in CI. On a live cluster, it needs **one
+sustained outage**. Short blips are not enough, and correctly so: the fast
+alert also needs more than 7.2% errors over the last *hour*, and three
+15-second outages are only about 2.5% of an hour's requests (tested in #53;
+the weekly budget is about 50 minutes of downtime, so blips should not page).
 
-1. Send steady traffic: a redirect every 0.5 s for 15 minutes, which is enough
-   requests to clear the traffic floor.
-2. Delete `postgres-0` three times, each time as soon as it is Running again
-   (`kubectl -n link-shortener delete pod postgres-0`). One delete gave about
-   25 s of 503s in the #26 test, which is borderline for keeping the 5-minute
-   ratio above 7.2% for the 2-minute `for`; three in a row clear it. Don't
-   scale the StatefulSet: ArgoCD would undo it (self-heal) and muddy the test.
-3. Watch Prometheus → Alerts: `RedirectErrorBudgetBurnFast` goes pending,
-   then firing after 2 minutes.
+Proven method (#53, 2026-10-25: fast alert firing about 7 minutes after the
+outage began, Discord firing and resolved messages):
 
-Record the result in the SLO issue (#53).
+1. Send steady traffic through the public load balancer: a redirect every
+   0.5 s, starting about 2.5 minutes before the outage, which also clears the
+   traffic floor.
+2. Make Postgres refuse the app's database for 5 minutes. It keeps running,
+   so liveness passes and nothing restarts, and nothing ArgoCD manages changes:
+
+   ```bash
+   pg() { kubectl -n link-shortener exec postgres-0 -- sh -c "psql -X -At -U \"\$POSTGRES_USER\" -d postgres -c \"$1\""; }
+   pg 'ALTER DATABASE linkshortener ALLOW_CONNECTIONS false'
+   pg "SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity WHERE datname = 'linkshortener'"
+   # ... 5 minutes ...
+   pg 'ALTER DATABASE linkshortener ALLOW_CONNECTIONS true'   # ALWAYS run this
+   ```
+
+   Script it with an `EXIT` trap that runs the last line, so an interrupted
+   test can never leave the database closed. The app's existing sessions keep
+   working until they are terminated, so the outage starts at the
+   `pg_terminate_backend` step, not the `ALTER`.
+3. Watch Prometheus → Alerts: `RedirectErrorBudgetBurnFast` goes pending once
+   both windows pass 7.2%, fires 2 minutes later, and resolves a few minutes
+   after recovery. Slow and ticket follow, and are expected.
+
+Don't use these instead:
+
+- **Deleting `postgres-0`:** each delete is only about 15 s of errors.
+- **Scaling the StatefulSet:** ArgoCD reverts it (self-heal).
+- **`pkill -STOP postgres`:** the kernel ignores a SIGSTOP sent from inside a
+  container to its PID 1 (the postmaster), so new connections still work. The
+  app loses about 2 requests and recovers, and the background workers stay
+  frozen until you run `pkill -CONT postgres`.
+
+Record the result in an issue.
