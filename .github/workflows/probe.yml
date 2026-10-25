@@ -1,0 +1,52 @@
+name: external-probe
+
+# What a real user sees (ADR 0008): a redirect request from outside the cluster,
+# every 5 minutes. In-cluster metrics go quiet when nobody visits and cannot see
+# failures that never reach the app; this check can. A failed run notifies the
+# repo owner by email (GitHub's default for scheduled workflows).
+#
+# The target address is a repository secret, never committed (public repo).
+# GitHub may delay scheduled runs by several minutes under load, and disables
+# them after 60 days without repository activity.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: external-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Probe the redirect
+        env:
+          BASE_URL: ${{ secrets.PROBE_BASE_URL }}
+          CODE: ${{ secrets.PROBE_CODE }}
+          EXPECTED_LOCATION: https://example.com/external-probe
+          # Over this a user would call it slow; the app answers in about 0.25 s.
+          MAX_SECONDS: "2"
+        run: |
+          set -u
+          if [ -z "${BASE_URL}" ] || [ -z "${CODE}" ]; then
+            echo "::error::PROBE_BASE_URL or PROBE_CODE is not set"; exit 1
+          fi
+          # Never echo the URL: the run log is public.
+          for attempt in 1 2 3; do
+            out=$(curl -s -o /dev/null --max-time 10 \
+              -w '%{http_code} %{time_total} %{redirect_url}' "${BASE_URL}/${CODE}") || out="000 0 "
+            read -r status secs location <<<"${out}"
+            echo "attempt ${attempt}: status=${status} time=${secs}s redirects_to_expected=$([ "${location}" = "${EXPECTED_LOCATION}" ] && echo yes || echo no)"
+            if [ "${status}" = "302" ] && [ "${location}" = "${EXPECTED_LOCATION}" ] \
+               && awk -v t="${secs}" -v m="${MAX_SECONDS}" 'BEGIN{exit !(t+0 <= m+0)}'; then
+              echo "probe OK"; exit 0
+            fi
+            [ "${attempt}" -lt 3 ] && sleep 10
+          done
+          echo "::error::redirect probe failed 3 times in a row (status=${status}, time=${secs}s)"
+          exit 1
