@@ -1,16 +1,18 @@
 name: external-probe
 
 # What a real user sees (ADR 0008): a redirect request from outside the cluster,
-# every 5 minutes. In-cluster metrics go quiet when nobody visits and cannot see
+# about every 15 minutes. In-cluster metrics go quiet when nobody visits and cannot see
 # failures that never reach the app; this check can. A failed run notifies the
 # repo owner by email (GitHub's default for scheduled workflows).
 #
 # The target address is a repository secret, never committed (public repo).
-# GitHub may delay scheduled runs by several minutes under load, and disables
-# them after 60 days without repository activity.
+# GitHub's scheduler is best-effort: it delays or drops runs under load,
+# mostly around the start of the hour. The first schedule (every 5 minutes, on
+# the :00 grid) ran once in 7.5 hours (#55), so the times are odd minutes. It
+# also disables scheduled workflows after 60 days without repository activity.
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
 
 permissions: {}

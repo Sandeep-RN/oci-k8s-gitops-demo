@@ -191,7 +191,7 @@ flowchart LR
     sli -->|"burn-rate alerts"| am["Alertmanager"]
     am -->|"webhook (SealedSecret)"| discord["Discord"]
     prom --> grafana["Grafana dashboard<br/>(from Git)"]
-    probe["GitHub Actions probe<br/>every 5 min"] -->|"public LB"| app
+    probe["GitHub Actions probe<br/>about every 15 min"] -->|"public LB"| app
     cron["CronJob 03:00 IST<br/>pg_dump"] -->|"instance principal,<br/>write-only"| bucket[("Object Storage<br/>14-day lifecycle")]
 ```
 
