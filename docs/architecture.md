@@ -3,21 +3,24 @@
 How the OCI Kubernetes GitOps demo is built, what runs today, and why it is
 shaped this way. Decisions link to their ADRs in [`docs/adr/`](adr/).
 
-> **As of 2026-10-23.** The delivery pipeline and the **OKE target** are built
-> and verified end to end. The long-lived **k3s node** on Always Free is
-> designed but **not built yet**, because Ampere A1 capacity in the home region
-> is unavailable. Sections marked *Planned* describe that design.
+> **As of 2026-10-25.** On the short-lived **OKE target**, the delivery
+> pipeline, the link shortener on PostgreSQL, observability (SLO alerts proven
+> with a live outage), and nightly backups (restore tested) are built and
+> verified end to end. The long-lived **k3s node** on Always Free has its
+> Terraform written (`terraform/k3s`) but is **not running yet**, because
+> Ampere A1 capacity in the home region is unavailable. Sections marked
+> *Planned* describe that design.
 
 ## 1. At a glance
 
 | | Built and verified | Planned |
 |---|---|---|
-| **App** | FastAPI backend with `/healthz` and `/readyz`, non-root multi-arch image | Link-shortener endpoints, PostgreSQL, frontend |
-| **CI** | Lint, test, Trivy scan, amd64+arm64 build, push to GHCR, auto-merging tag-bump PR | — |
-| **GitOps** | ArgoCD v3.5.6 app of apps, self-managed, Kustomize base and overlays, `validate` check | k3s cluster root |
+| **App** | FastAPI link shortener on PostgreSQL: 302 redirects, fail-fast 503s during a database outage, request metrics; non-root multi-arch image | Frontend |
+| **CI** | Lint, test (with real Postgres), Trivy scan, amd64+arm64 build, push to GHCR, auto-merging tag-bump PR; gitleaks full-history scan in all three repos | — |
+| **GitOps** | ArgoCD v3.5.6 app of apps, self-managed, Kustomize base and overlays, Sealed Secrets, `validate` check (kubeconform, Helm render, promtool, amtool) | k3s cluster root |
 | **Clusters** | OKE target: 2 x86 nodes across fault domains, private API, public LB | k3s on one Always Free A1 node |
 | **Edge** | OCI Flexible LB (10 Mbps, free) on the OKE target | NLB with reserved IP, Traefik, TLS at `demo.sandeeprn.in` |
-| **Ops** | Remote Terraform state, Bastion access, budget alerts | Prometheus, SLO burn-rate alerts, backups, runbooks |
+| **Ops** | Remote Terraform state, Bastion access, budget alerts; Prometheus, Grafana, Alertmanager; redirect SLO with burn-rate alerts to Discord; external probe; nightly backups with a tested restore; runbooks; node-drain evidence | Clean-state rebuild on k3s |
 
 ## 2. Repositories
 
@@ -78,14 +81,20 @@ Key properties:
 ```
 oci-k8s-gitops-demo-gitops/
   apps/link-shortener/
-    base/                  Namespace, Deployment, Service, PDB; image tag set by CI
+    base/                  Deployment, Service, PDB, Postgres StatefulSet, backup CronJob,
+                           ServiceMonitor, SLO rules, dashboard; image tag set by CI
     overlays/k3s/          Always Free node (planned cluster)
-    overlays/oke/          LoadBalancer Service, strict one-pod-per-node spread
+    overlays/oke/          LoadBalancer Service, strict one-pod-per-node spread, oci-bv volume,
+                           sealed Postgres credentials
+  platform/sealed-secrets/ Sealed Secrets controller, pinned upstream release
+  monitoring/              kube-prometheus-stack values, Grafana and Discord SealedSecrets
+  tests/prometheus/        promtool unit tests for the alert rules
   argocd/
     install/               upstream ArgoCD v3.5.6, pinned, via Kustomize
     clusters/oke/
       root.yaml            the root "app of apps" (applied once by hand)
-      apps/                AppProject "demo", Application "argocd", Application "link-shortener"
+      apps/                AppProject "demo"; Applications argocd, sealed-secrets,
+                           monitoring, link-shortener
 ```
 
 ```mermaid
@@ -93,6 +102,8 @@ flowchart LR
     root["root-oke<br/>(applied once)"] --> proj["AppProject demo<br/>sync wave -1"]
     root --> argo["Application argocd<br/>path argocd/install<br/>prune off, server-side apply"]
     root --> app["Application link-shortener<br/>project demo<br/>path overlays/oke"]
+    root --> ss["Application sealed-secrets<br/>sync wave -1"]
+    root --> mon["Application monitoring<br/>kube-prometheus-stack, sync wave -1"]
     argo -. manages .-> argocd_ns["ArgoCD itself"]
     app --> ns["namespace link-shortener"]
 ```
@@ -171,7 +182,40 @@ rolling updates with `maxUnavailable: 0`. A node drain on this target kept the
 service up (370 requests, 0 failures) and the PDB blocked eviction of the last
 pod: [drain evidence](evidence/oke-drain-2026-10-24.md).
 
-## 6. Access model
+## 6. Observability and backups (built)
+
+```mermaid
+flowchart LR
+    app["backend pods<br/>/metrics on :9000"] -->|"ServiceMonitor"| prom["Prometheus<br/>8-day retention, 50 GB volume"]
+    prom -->|"recording rules"| sli["SLIs: redirect error ratio,<br/>share under 200 ms"]
+    sli -->|"burn-rate alerts"| am["Alertmanager"]
+    am -->|"webhook (SealedSecret)"| discord["Discord"]
+    prom --> grafana["Grafana dashboard<br/>(from Git)"]
+    probe["GitHub Actions probe<br/>every 5 min"] -->|"public LB"| app
+    cron["CronJob 03:00 IST<br/>pg_dump"] -->|"instance principal,<br/>write-only"| bucket[("Object Storage<br/>14-day lifecycle")]
+```
+
+- **SLO (ADR 0008):** over 7 days, 99.5% of redirects are not 5xx, and 95% of
+  the rest finish under 200 ms. Alerts are multi-window burn rates
+  (14.4x and 6x page, 3x and 1x ticket), with a 20-request traffic floor. Rules
+  are unit-tested with promtool in CI and were proven live: a 5-minute
+  database outage fired the fast alert to Discord and resolved it
+  ([runbook](runbooks/slo-redirect-availability.md)).
+- **Readiness stays pod-local (ADR 0016):** a database outage keeps pods in the
+  Service answering fast 503s, so every failure is counted by the SLI.
+- **External probe:** a scheduled GitHub Actions job requests a known short
+  link from outside the cluster. That covers what in-cluster metrics cannot:
+  quiet periods with no traffic, and requests that never reach the app.
+- **Backups (ADR 0007, 0017):** nightly `pg_dump` uploaded by the OCI CLI with
+  instance-principal auth. The nodes may only create and list objects in the
+  bucket; read, overwrite and delete were verified to be denied. Restores use
+  the operator's login; a drill restored identical data
+  ([runbook](runbooks/postgres-backup-restore.md)). `PostgresBackupMissing`
+  alerts after 26 h without a success.
+- **Admin UIs** (ArgoCD, Grafana, Prometheus, Alertmanager) are reachable only
+  by port-forward ([access runbook](runbooks/access.md)).
+
+## 7. Access model
 
 ```mermaid
 flowchart LR
@@ -186,19 +230,21 @@ flowchart LR
   tokens (`auth = "SecurityToken"`).
 - **The tunnel script** creates a throwaway SSH key and session, writes the
   kubeconfig outside the repo, and deletes the session on Ctrl+C.
-- **Admin UIs** (ArgoCD, later Grafana) are reachable only by port-forward,
-  never exposed (ADR 0014).
+- **Admin UIs** (ArgoCD, Grafana, Prometheus, Alertmanager) are reachable
+  only by port-forward, never exposed (ADR 0014).
 - Step-by-step commands: [access runbook](runbooks/access.md).
 
-## 7. Infrastructure as code
+## 8. Infrastructure as code
 
 ```
 oci-k8s-gitops-demo/
   scripts/bootstrap-state.sh   one-time: compartment + versioned private state bucket (idempotent)
   scripts/oke-tunnel.sh        kubectl access to the private OKE API
   terraform/backend.hcl        generated, git-ignored
+  scripts/a1-wait-and-apply.sh retries the k3s apply until A1 capacity appears
   terraform/oke/               OKE target: VCN, gateways, subnets, security lists, cluster, node pool, Bastion
-  terraform/node/              (planned) k3s node, NLB, reserved IP, DNS
+  terraform/shared/            backup bucket, lifecycle rule, write-only IAM (outlives any cluster)
+  terraform/k3s/               k3s node and network (written; waiting for A1 capacity); NLB, reserved IP, DNS later
 ```
 
 - **State:** the native `oci` backend, in a versioned Object Storage bucket,
@@ -206,20 +252,21 @@ oci-k8s-gitops-demo/
 - **Proven re-runnable:** `terraform plan` shows no changes after apply, after
   the LB was created, and on `main`.
 - **Guardrails:** `terraform fmt`, `terraform validate` and gitleaks (with
-  custom OCI rules) run as pre-commit hooks in all repos.
+  custom OCI rules) run as pre-commit hooks; gitleaks also scans the full
+  history in CI in all three repos, because `--no-verify` skips hooks.
 
-## 8. Security summary
+## 9. Security summary
 
 | Area | Control |
 |---|---|
-| Secrets in Git | gitleaks pre-commit with OCI rules. tfvars, state, backend.hcl and kubeconfig are git-ignored. Outputs holding OCIDs or IPs are marked sensitive. Only SealedSecrets may be committed, and CI rejects plain `Secret` manifests |
+| Secrets in Git | gitleaks with OCI rules, as a pre-commit hook and as a full-history CI job in every repo. tfvars, state, backend.hcl and kubeconfig are git-ignored. Outputs holding OCIDs or IPs are marked sensitive. Only SealedSecrets may be committed, and CI rejects plain `Secret` manifests |
 | Supply chain | Actions pinned by SHA; checksum-verified tool downloads; Trivy gate before push; pinned dependency versions |
 | Runtime | Non-root UID 10001, read-only root filesystem, all capabilities dropped, seccomp `RuntimeDefault`, no service-account token mounted |
 | Network | Private workers and API; Bastion allowlisted to one /32; public exposure only through the LB on 80/443 |
-| Cloud auth | Short-lived session tokens; a dedicated compartment |
+| Cloud auth | Short-lived session tokens; a dedicated compartment. In-cluster access to OCI is node identity with a write-only policy on one bucket (ADR 0017) |
 | Cost | Budget with 50% and 100% actual-spend alerts; an A1 guardrail in Terraform; teardown date tagged on every resource |
 
-## 9. Planned: the long-lived Always Free target
+## 10. Planned: the long-lived Always Free target
 
 The design the live demo will run on (ADR 0001, 0002, 0004, 0005, 0006, 0007,
 0008, 0012, 0013). It is blocked on A1 capacity.
@@ -245,7 +292,7 @@ There is no node-level high availability: a single node cannot honour a PDB
 during a drain. The README will say so plainly. The OKE target demonstrates the
 multi-node behaviour instead ([drain evidence](evidence/oke-drain-2026-10-24.md)).
 
-## 10. Decision index
+## 11. Decision index
 
 | ADR | Decision |
 |---|---|
