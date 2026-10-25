@@ -134,6 +134,7 @@ First things to try:
   proves the alert pipeline works.
 
 Alerts and what to do about them: [redirect SLO runbook](slo-redirect-availability.md).
+Backups and restores: [Postgres backup runbook](postgres-backup-restore.md).
 
 ## Troubleshooting
 
