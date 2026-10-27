@@ -4,13 +4,14 @@ Infrastructure, architecture decisions and runbooks for a public demo of
 Kubernetes, Docker, CI/CD, GitOps and observability, running entirely on
 **Oracle Cloud Always Free** (target cost: $0/month).
 
-> **Status (2026-10-25):** live on a short-lived OKE target (ADR 0015): the
+> **Status (2026-10-27):** live on a short-lived OKE target (ADR 0015): the
 > CI → GitOps → ArgoCD pipeline, the link shortener on PostgreSQL, a redirect
 > SLO with burn-rate alerts to Discord (proven with a live outage), an external
 > probe, and nightly backups with a tested restore. The Always Free k3s node is
-> waiting for A1 capacity, and the live URL (`demo.sandeeprn.in`) is not up
-> yet. See **[docs/architecture.md](docs/architecture.md)** for what is built
-> and verified, and [docs/evidence/](docs/evidence/) for test write-ups.
+> blocked: the home region has had no A1 (or E2.1.Micro) capacity since
+> 2026-10-22. So HTTPS and the live URL (`demo.sandeeprn.in`) move to OKE
+> first (ADR 0020, in progress). See **[docs/architecture.md](docs/architecture.md)**
+> for what is built and verified, and [docs/evidence/](docs/evidence/) for test write-ups.
 
 ## The three repos
 
@@ -24,7 +25,7 @@ Kubernetes, Docker, CI/CD, GitOps and observability, running entirely on
 
 ```
 Internet -> Cloudflare DNS (DNS only)
-         -> OCI Network Load Balancer (reserved IP, TLS passthrough)
+         -> OCI Network Load Balancer (TCP passthrough; DNS kept by external-dns)
          -> Traefik on a single-node k3s cluster (Ampere A1 VM, 2 OCPU / 12 GB)
          -> link-shortener app (FastAPI) + PostgreSQL StatefulSet
 ```
@@ -36,7 +37,8 @@ Internet -> Cloudflare DNS (DNS only)
 - **Delivery:** GitHub Actions builds, scans (Trivy) and pushes a multi-arch
   image, then opens a tag-bump PR in the gitops repo; ArgoCD syncs it (ADR 0009).
 - **Edge and secrets:** Traefik Ingress, cert-manager with Cloudflare DNS-01,
-  Sealed Secrets (ADR 0004, 0005, 0006).
+  external-dns, token-gated link creation, Sealed Secrets (ADR 0004, 0005,
+  0006, 0020). Being built on OKE first, while A1 capacity is unavailable.
 - **Observability:** kube-prometheus-stack, a 7-day redirect SLO with
   multi-window burn-rate alerts to Discord, and an external probe (ADR 0008).
 
