@@ -1,9 +1,11 @@
 # Runbook: redirect SLO burn-rate alerts
 
 For `RedirectErrorBudgetBurnFast`, `RedirectErrorBudgetBurnSlow` (critical) and
-`RedirectErrorBudgetBurnTicket` (warning). The rules, tests and dashboard live
-in the gitops repo: `apps/link-shortener/base/slo-rules.yaml`,
-`tests/prometheus/slo-redirect.test.yaml`, `dashboards/slo-redirect.json`.
+`RedirectErrorBudgetBurnTicket` (warning), and for the synthetic probe's
+`RedirectProbeNoAnswer` (critical) and `RedirectProbeMissing` (warning). The
+rules, tests and dashboard live in the gitops repo:
+`apps/link-shortener/base/slo-rules.yaml`, `tests/prometheus/*.test.yaml`,
+`dashboards/slo-redirect.json`.
 
 ## What the alert means
 
@@ -20,6 +22,11 @@ fire when errors spend that budget too fast:
 The short window means an alert clears soon after the errors stop. An alert
 also needs at least 20 redirects in its long window, so a handful of failed
 requests at near-zero traffic doesn't page anyone.
+
+Most of the traffic, while real visitors are few, comes from the in-cluster
+probe (ADR 0019): `GET /Probe00` on the backend Service every 30 s, from the
+blackbox exporter in `monitoring`. `Probe00` is not a stored code, so a healthy
+app answers 404.
 
 A 404 for an unknown code is not an error. Only 5xx counts. In this app that
 means 503 (storage unavailable, which is how the app fails fast during a
@@ -58,6 +65,34 @@ kubectl -n link-shortener get pvc                            # Bound?
   availability domain (there is one AD here).
 - **Running but the app still returns 503:** check the credentials Secret and
   the pool settings (`PG*` env vars in the Deployment, ConfigMap `app-config`).
+
+## Probe alerts
+
+**`RedirectProbeNoAnswer`**: for 3 minutes the probe got no HTTP answer at all
+(refused, reset or over 4 s). The app never saw these requests, so the
+burn-rate alerts may stay quiet. Usually no backend pod is ready:
+
+```bash
+kubectl -n link-shortener get pods -l app.kubernetes.io/name=backend -o wide
+kubectl -n link-shortener get endpointslices -l kubernetes.io/service-name=backend
+kubectl -n link-shortener describe deploy backend | tail -20   # rollout stuck? image pull?
+```
+
+A probe that gets 503s does not fire this alert; the burn-rate alerts handle
+that case (go to *Database*).
+
+**`RedirectProbeMissing`**: the probe has not run for 15 minutes, so quiet
+periods are unmonitored. Not urgent.
+
+```bash
+kubectl -n monitoring get deploy blackbox-exporter
+kubectl -n monitoring logs deploy/blackbox-exporter --tail=20
+kubectl -n link-shortener get probe redirect
+kubectl -n argocd get application blackbox-exporter
+```
+
+The Prometheus UI's *Targets* page shows the `redirect-probe` job and its last
+error.
 
 ## Recent deploy (500)
 

@@ -45,10 +45,10 @@ Internet -> Cloudflare DNS (DNS only)
 ```
 terraform/       OCI infrastructure, one root per lifecycle: oke/, shared/, k3s/
 scripts/         state bootstrap, OKE tunnel, A1 capacity watcher
-docs/adr/        Architecture decision records (0001-0018)
+docs/adr/        Architecture decision records (0001-0019)
 docs/runbooks/   Access, alerts, backups and restore, Sealed Secrets keys
 docs/evidence/   Write-ups of tests run on the cluster (node drain)
-.github/         external probe (about every 15 min), gitleaks history scan
+.github/         external probe (slow outside check, ADR 0019), gitleaks history scan
 GLOSSARY.md      Project terms
 ```
 

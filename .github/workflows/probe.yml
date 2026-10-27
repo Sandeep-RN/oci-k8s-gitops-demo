@@ -1,9 +1,11 @@
 name: external-probe
 
 # What a real user sees (ADR 0008): a redirect request from outside the cluster,
-# about every 15 minutes. In-cluster metrics go quiet when nobody visits and cannot see
-# failures that never reach the app; this check can. A failed run notifies the
-# repo owner by email (GitHub's default for scheduled workflows).
+# through the public load balancer. Scheduled 4 times an hour, but GitHub runs
+# it only every few hours (#55), so it catches long outages of the LB or the
+# whole cluster. Fast detection and quiet-period traffic come from the
+# in-cluster blackbox probe (ADR 0019). A failed run notifies the repo owner by
+# email (GitHub's default for scheduled workflows).
 #
 # The target address is a repository secret, never committed (public repo).
 # GitHub's scheduler is best-effort: it delays or drops runs under load,
