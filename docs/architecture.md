@@ -191,7 +191,9 @@ flowchart LR
     sli -->|"burn-rate alerts"| am["Alertmanager"]
     am -->|"webhook (SealedSecret)"| discord["Discord"]
     prom --> grafana["Grafana dashboard<br/>(from Git)"]
-    probe["GitHub Actions probe<br/>about every 15 min"] -->|"public LB"| app
+    bbx["blackbox exporter<br/>every 30 s"] -->|"GET /Probe00<br/>via Service"| app
+    prom -->|"Probe"| bbx
+    probe["GitHub Actions probe<br/>every few hours"] -->|"public LB"| app
     cron["CronJob 03:00 IST<br/>pg_dump"] -->|"instance principal,<br/>write-only"| bucket[("Object Storage<br/>14-day lifecycle")]
 ```
 
@@ -203,9 +205,12 @@ flowchart LR
   ([runbook](runbooks/slo-redirect-availability.md)).
 - **Readiness stays pod-local (ADR 0016):** a database outage keeps pods in the
   Service answering fast 503s, so every failure is counted by the SLI.
-- **External probe:** a scheduled GitHub Actions job requests a known short
-  link from outside the cluster. That covers what in-cluster metrics cannot:
-  quiet periods with no traffic, and requests that never reach the app.
+- **Synthetic probe (ADR 0019):** the blackbox exporter requests an unknown
+  short code on the backend Service every 30 s (a 404 after a Postgres
+  lookup). That gives the SLO steady traffic in quiet periods, and an alert
+  fires when the probe gets no answer at all, which the app's metrics cannot
+  see. A scheduled GitHub Actions job also checks a real short link through
+  the public load balancer, but GitHub runs it only every few hours.
 - **Backups (ADR 0007, 0017):** nightly `pg_dump` uploaded by the OCI CLI with
   instance-principal auth. The nodes may only create and list objects in the
   bucket; read, overwrite and delete were verified to be denied. Restores use
@@ -315,3 +320,4 @@ multi-node behaviour instead ([drain evidence](evidence/oke-drain-2026-10-24.md)
 | [0016](adr/0016-readiness-checks-pod-local-state-only.md) | Readiness checks pod-local state only, not the shared database |
 | [0017](adr/0017-backup-auth-instance-principals-write-only.md) | Backups use instance principals with a write-only policy |
 | [0018](adr/0018-app-database-role-least-privilege.md) | The backend connects with its own non-superuser database role |
+| [0019](adr/0019-in-cluster-synthetic-redirect-probe.md) | An in-cluster synthetic probe feeds the redirect SLO |
