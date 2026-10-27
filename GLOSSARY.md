@@ -21,3 +21,7 @@ Terms used across the three repos. Use these words in issues, specs and ADRs.
 - **External probe**: the scheduled GitHub Actions check of the public URL, measuring what a real user sees.
 - **Runbook**: the written steps for what to check and do when an alert fires.
 - **Core / Stretch**: scope tiers from ADR 0011.
+- **Edge**: everything between the internet and the backend Service: DNS, the NLB, Traefik, TLS, the rate limit (ADR 0020).
+- **Link-creation token**: a named secret token required to create a short link; redirects need none (ADR 0020).
+- **Creation mode**: `token` (now) or `open` (reserved; refuses to start until abuse safeguards exist).
+- **Cutover**: the two-step move from the Flexible LB address to `demo.sandeeprn.in` (ADR 0020).

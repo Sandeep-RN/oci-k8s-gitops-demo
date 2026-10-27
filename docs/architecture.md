@@ -19,7 +19,7 @@ shaped this way. Decisions link to their ADRs in [`docs/adr/`](adr/).
 | **CI** | Lint, test (with real Postgres), Trivy scan, amd64+arm64 build, push to GHCR, auto-merging tag-bump PR; gitleaks full-history scan in all three repos | — |
 | **GitOps** | ArgoCD v3.5.6 app of apps, self-managed, Kustomize base and overlays, Sealed Secrets, `validate` check (kubeconform, Helm render, promtool, amtool) | k3s cluster root |
 | **Clusters** | OKE target: 2 x86 nodes across fault domains, private API, public LB | k3s on one Always Free A1 node |
-| **Edge** | OCI Flexible LB (10 Mbps, free) on the OKE target | NLB with reserved IP, Traefik, TLS at `demo.sandeeprn.in` |
+| **Edge** | OCI Flexible LB (10 Mbps, free) on the OKE target, plain HTTP | In progress on OKE (ADR 0020, issue #83): NLB, Traefik, cert-manager, external-dns, token-gated link creation, HTTPS at `demo.sandeeprn.in`; then k3s if A1 capacity appears |
 | **Ops** | Remote Terraform state, Bastion access, budget alerts; Prometheus, Grafana, Alertmanager; redirect SLO with burn-rate alerts to Discord; external probe; nightly backups with a tested restore; runbooks; node-drain evidence | Clean-state rebuild on k3s |
 
 ## 2. Repositories
@@ -115,7 +115,7 @@ flowchart LR
   `link-shortener` namespace.
 - **Overlays carry only real environment differences.** k3s will use Traefik
   Ingress and `local-path` storage. OKE uses an OCI LoadBalancer Service and
-  strict spread.
+  strict spread today; it moves to Traefik Ingress behind the NLB (ADR 0020).
 
 ## 5. OKE target (built, short-lived)
 
@@ -249,7 +249,7 @@ oci-k8s-gitops-demo/
   scripts/a1-wait-and-apply.sh retries the k3s apply until A1 capacity appears
   terraform/oke/               OKE target: VCN, gateways, subnets, security lists, cluster, node pool, Bastion
   terraform/shared/            backup bucket, lifecycle rule, write-only IAM (outlives any cluster)
-  terraform/k3s/               k3s node and network (written; waiting for A1 capacity); NLB, reserved IP, DNS later
+  terraform/k3s/               k3s node and network (written; waiting for A1 capacity); its network is applied
 ```
 
 - **State:** the native `oci` backend, in a versioned Object Storage bucket,
@@ -275,12 +275,15 @@ oci-k8s-gitops-demo/
 ## 10. Planned: the long-lived Always Free target
 
 The design the live demo will run on (ADR 0001, 0002, 0004, 0005, 0006, 0007,
-0008, 0012, 0013). It is blocked on A1 capacity.
+0008, 0012, 0013, 0020). It is blocked on A1 capacity: from 2026-10-22 the
+home region (one availability domain) reported no capacity for A1 at 2/12,
+1/6 and 1/4, nor for E2.1.Micro. The edge part is being built on OKE first
+(ADR 0020) and carries over.
 
 ```mermaid
 flowchart LR
-    user(("Internet")) --> cf["Cloudflare DNS<br/>demo.sandeeprn.in (DNS only)"]
-    cf --> nlb["OCI NLB, reserved IP<br/>TLS passthrough 80/443"]
+    user(("Internet")) --> cf["Cloudflare DNS<br/>demo.sandeeprn.in (DNS only, external-dns)"]
+    cf --> nlb["OCI NLB<br/>TCP passthrough 80/443"]
     nlb --> traefik["Traefik (k3s ServiceLB)"]
     subgraph node["1 × A1 VM, 2 OCPU / 12 GB, Ubuntu 24.04 aarch64, k3s"]
       traefik --> backend["link-shortener ×2"]
@@ -314,10 +317,11 @@ multi-node behaviour instead ([drain evidence](evidence/oke-drain-2026-10-24.md)
 | [0010](adr/0010-node-access-ssh-tunnel.md) | No public Kubernetes API |
 | [0011](adr/0011-workflow-and-scope.md) | PR workflow; core vs stretch scope |
 | [0012](adr/0012-node-firewall-and-cloud-init.md) | Node firewall handled in cloud-init |
-| [0013](adr/0013-dns-and-reserved-ip.md) | Reserved public IP and Terraform-managed DNS |
+| [0013](adr/0013-dns-and-reserved-ip.md) | Reserved public IP and Terraform-managed DNS (amended by 0020) |
 | [0014](adr/0014-admin-ui-access.md) | Admin UIs only through port-forward |
 | [0015](adr/0015-oke-ephemeral-second-target.md) | OKE as a short-lived second deploy target |
 | [0016](adr/0016-readiness-checks-pod-local-state-only.md) | Readiness checks pod-local state only, not the shared database |
 | [0017](adr/0017-backup-auth-instance-principals-write-only.md) | Backups use instance principals with a write-only policy |
 | [0018](adr/0018-app-database-role-least-privilege.md) | The backend connects with its own non-superuser database role |
 | [0019](adr/0019-in-cluster-synthetic-redirect-probe.md) | An in-cluster synthetic probe feeds the redirect SLO |
+| [0020](adr/0020-tls-and-public-hostname-on-oke.md) | TLS and the public hostname on OKE, with token-gated link creation |

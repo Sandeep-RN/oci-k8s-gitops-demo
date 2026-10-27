@@ -6,7 +6,7 @@ One root per lifecycle, each with its own state key in the shared bucket:
 |------|------|-----------|
 | `oke/` | Short-lived OKE target (ADR 0015) | Destroy by 2026-11-15 |
 | `shared/` | Postgres backup bucket, lifecycle rule, write-only IAM for the nodes (ADR 0017) | Long-lived; bucket has `prevent_destroy` |
-| `k3s/` | Always Free k3s node and network (ADR 0001); NLB, reserved IP and DNS to follow | Long-lived, `prevent_destroy`; not applied yet (waiting for A1 capacity, `scripts/a1-wait-and-apply.sh`) |
+| `k3s/` | Always Free k3s node and network (ADR 0001); the network is applied, the node waits for A1 capacity. Edge and DNS per ADR 0020 (no reserved IP; external-dns) | Long-lived, `prevent_destroy`; not applied yet (waiting for A1 capacity, `scripts/a1-wait-and-apply.sh`) |
 
 ## One-time bootstrap (ADR 0003)
 
