@@ -1,6 +1,6 @@
 # 0015. OKE as a short-lived second deploy target on trial credit
 
-Status: Accepted (2026-10-22)
+Status: Accepted (2026-10-22). Amended by ADR 0020 (TLS and public hostname on OKE).
 
 ## Context
 The A1 node (ADR 0001) cannot be created yet: the home region reports "Out of host capacity". The $300 trial credit runs out around 2026-11-19 and is meant for disposable experiments. Deploying the same app to Oracle's managed Kubernetes (OKE) would make use of the credit, let GitOps work start before the node exists, and show something the single node cannot: several nodes, pods spread across fault domains, and a PodDisruptionBudget that holds during a drain (ADR 0001, "At scale").
