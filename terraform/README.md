@@ -29,8 +29,9 @@ terraform plan -out=oke.tfplan      # expect 15 resources on first run
 terraform apply oke.tfplan          # ~10-15 min; starts billing (~$2/day)
 ```
 
-- Basic cluster (free control plane), 2 × `VM.Standard.E4.Flex` 1 OCPU / 8 GB,
-  one per fault domain. A variable validation rejects A1 shapes.
+- Basic cluster (free control plane), 2 × `VM.Standard.E5.Flex` 1 OCPU / 8 GB
+  (E4 had no host capacity; see Troubleshooting below), one per fault domain.
+  A variable validation rejects A1 shapes.
 - Private API endpoint and private workers. kubectl goes through OCI Bastion
   (ADR 0010); `bastion_client_cidr` in `terraform.tfvars` must be your current
   public IP as a /32.
