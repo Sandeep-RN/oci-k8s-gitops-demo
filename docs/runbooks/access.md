@@ -10,7 +10,7 @@ with `kubectl port-forward` (ADR 0014).
 
 ```text
 laptop ──ssh──► OCI Bastion ──► Kubernetes API (private)     kubectl, port-forward
-laptop ──http─► Flexible Load Balancer ──► backend pods      the app (public)
+laptop ──https─► NLB ──► Traefik ──► backend pods            the app (public)
 laptop ──port-forward (through the API)──► ArgoCD / Grafana / Prometheus / Alertmanager
 ```
 
@@ -71,18 +71,17 @@ House rules (ArgoCD owns the cluster):
 ## The app (public)
 
 ```bash
-LB=$(kubectl -n link-shortener get svc backend -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-echo "http://$LB"
+LB=https://demo.sandeeprn.in   # the Flexible Load Balancer is gone (ADR 0020)
 
 # Creating a link needs a named token (ADR 0020); paste yours from the
 # password manager. The header goes in on stdin (-H @-), so the token is not
 # in curl's argv or your shell history.
 read -r -s -p 'Link token: ' LINK_TOKEN; echo
 printf 'Authorization: Bearer %s\n' "$LINK_TOKEN" |
-  curl -s -X POST "http://$LB/api/links" -H @- -H 'content-type: application/json' \
+  curl -s -X POST "$LB/api/links" -H @- -H 'content-type: application/json' \
     -d '{"url":"https://example.com"}'              # -> 201 {"code":"AbC1234", ...}; 401 without a valid token
-curl -si "http://$LB/AbC1234" | head -3             # -> 302 and Location: https://example.com (no token)
-curl -s "http://$LB/readyz"                         # -> {"status":"ready"}
+curl -si "$LB/AbC1234" | head -3             # -> 302 and Location: https://example.com (no token)
+curl -s "$LB/readyz"                         # -> {"status":"ready"}
 ```
 
 Tokens are keys of the `link-tokens` SealedSecret in the gitops repo; add or

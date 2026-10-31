@@ -235,8 +235,8 @@ Cloudflare's audit log tells them apart), and the link-creation tokens. Sealing
 scripts: `scripts/seal-cloudflare-token.sh` and `scripts/seal-link-tokens.sh`
 in the gitops repo.
 
-**Verified.** `scripts/verify-public-url.sh --production --hsts --cutover`
-passed 12 of 12 checks (DNS, HTTPS redirect, trusted chain, HSTS, 401 without
+**Verified** (evidence: [issue #91](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/91#issuecomment-6547990222)).
+`scripts/verify-public-url.sh --production --hsts --cutover` passed 12 of 12 checks (DNS, HTTPS redirect, trusted chain, HSTS, 401 without
 a token, a link created and followed, rate-limit 429, no app LoadBalancer
 Service left). After the cutover the old load balancer was gone from the
 compartment, `terraform plan` showed no changes, and no 5xx responses were

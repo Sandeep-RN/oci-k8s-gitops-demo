@@ -39,8 +39,8 @@ trusted certificate chain, HSTS, 401 without a token, a link created with
 `LINK_TOKEN` and followed, the rate limit, and that no LoadBalancer Service is
 left for the app. It prints no addresses. Take the token from the password
 manager; do not paste it into a command line (the script reads the
-environment). The rate-limit burst briefly makes the site answer 429, so do not
-run it during a load test.
+environment). The rate-limit check sends a burst of 600 requests, so the site answers 429
+for a few seconds; do not run it during a load test.
 
 ## Debug: the site does not answer or the certificate is wrong
 
@@ -85,8 +85,8 @@ NLB (look at `$K -n traefik describe svc`). Do not set `is-preserve-source`: wit
 ## Renew or debug the certificate
 
 cert-manager renews by itself 30 days before expiry. Normally nothing to do.
-Production certificates issued 2026-10-31 expire 2027-01-29 and should renew
-around 2026-12-30.
+The first production certificate was issued 2026-10-31 (valid 90 days);
+`Renewal Time` in `describe` shows when the next renewal is due.
 
 ```bash
 $K -n link-shortener get certificate,certificaterequest,order,challenge
@@ -201,7 +201,7 @@ everything a leaked token made:
 **If a token leaks:** revoke it first, then look at what it created. Rotating
 is the same as revoking and adding under a new name.
 
-## Tear down (read before issue #13)
+## OKE teardown (read before issue #13)
 
 **Delete the Ingress before the cluster.** external-dns then removes
 `demo.sandeeprn.in` and its TXT owner record. Easiest: delete the
