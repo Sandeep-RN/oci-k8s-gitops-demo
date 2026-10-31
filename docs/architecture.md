@@ -199,22 +199,30 @@ before:  Internet -> OCI Flexible LB (by IP, plain HTTP) -> backend Service -> p
 now:     Internet -> demo.sandeeprn.in (DNS) -> NLB (TCP passthrough) -> Traefik x2 -> backend ClusterIP -> pods
 ```
 
-```mermaid
-flowchart TB
-    visitor(("Visitor")) -->|"1. DNS"| cf["Cloudflare DNS<br/>demo A record + edns- TXT owner record"]
-    visitor -->|"2. TCP 80 / 443"| nlb["OCI NLB<br/>passthrough, no TLS here"]
-    nlb --> t1["Traefik pod<br/>node 1"]
-    nlb --> t2["Traefik pod<br/>node 2"]
-    t1 & t2 -->|"HTTP to HTTPS, rate limit, HSTS,<br/>TLS ends here"| svc["backend Service<br/>ClusterIP"]
-    svc --> pods["backend pods x2"]
-    sec[("link-tokens Secret<br/>one file per named token")] -->|"checked on POST /api/links"| pods
+**The request path.** One visitor request, left to right:
 
-    ing["Ingress backend<br/>(gitops repo)"] -.->|"read by"| edns["external-dns"]
-    ing -.->|"read by"| cm["cert-manager"]
-    edns -.->|"create / delete records<br/>(Cloudflare token 1)"| cf
-    cm -.->|"DNS-01 TXT challenge<br/>(Cloudflare token 2)"| cf
-    cm -.->|"Secret demo-sandeeprn-in-tls"| t1
-    cm -.-> t2
+```mermaid
+flowchart LR
+    visitor(("Visitor")) --> cf["Cloudflare DNS<br/>A record, DNS only"]
+    cf --> nlb["OCI NLB<br/>TCP passthrough"]
+    nlb --> traefik["Traefik x2<br/>one per node<br/>TLS, HTTPS redirect,<br/>rate limit, HSTS"]
+    traefik --> svc["backend Service<br/>ClusterIP"]
+    svc --> pods["backend x2<br/>token check on<br/>POST /api/links"]
+    pods --> pg[("PostgreSQL")]
+```
+
+**What keeps it working.** Controllers in the cluster read the one Ingress in
+the gitops repo and act on Cloudflare and Traefik, each with its own
+Cloudflare token:
+
+```mermaid
+flowchart LR
+    ing["Ingress backend<br/>(gitops repo)"] --> edns["external-dns<br/>Cloudflare token 1"]
+    ing --> cm["cert-manager<br/>Cloudflare token 2"]
+    edns -->|"A + TXT owner record"| cf["Cloudflare DNS"]
+    cm -->|"DNS-01 challenge"| cf
+    cm -->|"TLS Secret"| traefik["Traefik"]
+    tokens[("link-tokens<br/>SealedSecret")] -->|"one file per token"| pods["backend pods"]
 ```
 
 | Piece | What it does | Why this way |
