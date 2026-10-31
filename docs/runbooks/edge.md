@@ -159,36 +159,59 @@ For a new tester or job. Tokens are named; the name is stored with each link
 2. Generate a value and put it straight into the password manager:
    `openssl rand -hex 32` (at least 32 characters; shorter values are ignored
    by the app).
-3. In a gitops worktree on a new branch:
+3. In the gitops repo, **branch from the latest `main` first**, then seal:
    ```bash
+   git fetch origin && git switch -c token-reviewer-alex origin/main
    scripts/seal-link-tokens.sh reviewer-alex
    ```
    Paste the value at the hidden prompt. The script adds that one key and keeps
-   the others (`--merge-into`).
+   the others (`--merge-into`). It writes into whatever is checked out: run on
+   a stale local `main`, it merges into an old copy of the file, and the push
+   is rejected (`main` takes PRs only).
 4. Review the diff: only `link-tokens-sealedsecret.yaml` changes, and only a
    new key appears under `encryptedData`. Open a PR, wait for `validate`,
    merge.
-5. Wait for ArgoCD (up to about 3 minutes) plus the kubelet's refresh of the
-   mounted Secret (about 1 minute). No restart is needed.
-6. Prove it, with the value from the password manager:
+5. Wait until the change reaches the pods; no restart is needed. It takes
+   ArgoCD's poll (up to about 3 minutes), the Secret update, then the
+   kubelet's refresh of the mounted files. Measured on 2026-10-31: under 4
+   minutes from merge to both pods, for an add and for a revoke. Check each
+   layer instead of guessing (prints names only, never values):
    ```bash
+   $K -n argocd get app link-shortener -o jsonpath='{.status.sync.revision}{"\n"}'   # = the merge commit
+   $K -n link-shortener get secret link-tokens -o go-template='{{range $k,$v := .data}}{{$k}} {{end}}{{"\n"}}'
+   for p in $($K -n link-shortener get pods -l app.kubernetes.io/name=backend -o name); do
+     $K -n link-shortener exec "${p#pod/}" -- ls //etc/link-shortener/tokens; done
+   ```
+   The double slash stops Git Bash from rewriting `/etc/...` into a Windows
+   path; Linux treats it as a single slash.
+6. Prove it in a **new terminal**, reading the value under a prompt that names
+   the token, so another token's value cannot sit in the variable by mistake:
+   ```bash
+   read -r -s -p 'reviewer-alex value: ' TOKEN; echo
+   echo ${#TOKEN}     # 64. 0 means empty, and an empty token also gives 401
    printf 'header = "Authorization: Bearer %s"\n' "$TOKEN" | curl -sS -K - \
      -o /dev/null -w '%{http_code}\n' -X POST https://demo.sandeeprn.in/api/links \
      -H 'content-type: application/json' -d '{"url":"https://example.com/runbook-check"}'
    ```
    Expect `201`. (`curl -K -` keeps the token off the command line and out of
-   the process list.) Then confirm a wrong value gives `401`.
+   the process list.) **A `201` only says that some valid token was used.**
+   Confirm it was this one: the newest link's `created_by` must be the new
+   name (query below, with `ORDER BY created_at DESC LIMIT 1`). On 2026-10-31
+   a test passed with `201` while the variable held the `owner` value; only
+   `created_by` showed it.
 7. Give the value to its user over a private channel, never in a ticket or chat
    that is public.
 
 ## Revoke a link-creation token
 
-1. In a gitops worktree on a new branch, open
+1. On a new branch from the latest `origin/main` (as in step 3 above), open
    `apps/link-shortener/overlays/oke/link-tokens-sealedsecret.yaml` and delete
    that token's line under `spec.encryptedData`. Do not touch the other lines.
-2. Open a PR, wait for `validate`, merge. Wait as in step 5 above.
-3. Prove it: the same `curl` as above with the revoked value now returns `401`,
-   and a remaining token still returns `201`.
+2. Open a PR, wait for `validate`, merge. Check each layer as in step 5 above
+   until no pod lists the token.
+3. Prove it: the same `curl` as above with the revoked value (check that
+   `${#TOKEN}` is not 0) now returns `401`, and no new link carries its
+   `created_by`. A remaining token still returns `201`.
 4. Delete the value from the password manager.
 
 Links the token already created keep working (redirects are public). Their
