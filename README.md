@@ -46,7 +46,7 @@ Internet -> Cloudflare DNS (DNS only)
 
 ```
 terraform/       OCI infrastructure, one root per lifecycle: oke/, shared/, k3s/
-scripts/         state bootstrap, OKE tunnel, A1 capacity watcher
+scripts/         state bootstrap, OKE tunnel, A1 capacity watcher, public URL verify
 docs/adr/        Architecture decision records (0001-0019)
 docs/runbooks/   Access, alerts, backups and restore, Sealed Secrets keys
 docs/evidence/   Write-ups of tests run on the cluster (node drain)
