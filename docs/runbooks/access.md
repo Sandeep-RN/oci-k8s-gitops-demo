@@ -89,6 +89,22 @@ Tokens are keys of the `link-tokens` SealedSecret in the gitops repo; add or
 rotate one with its `scripts/seal-link-tokens.sh`. Scripts that create links
 read the token from `LINK_TOKEN`, never from a file in a repo.
 
+### Verify the public URL
+
+`scripts/verify-public-url.sh` checks `https://demo.sandeeprn.in` from outside
+(DNS, certificate, redirects, token gate, rate limit) with a PASS/FAIL line per
+check and a non-zero exit on failure. Flags and checks are in its header.
+
+```bash
+read -r -s -p 'Link token: ' LINK_TOKEN; export LINK_TOKEN; echo
+scripts/verify-public-url.sh --staging                  # now
+scripts/verify-public-url.sh --production --hsts        # after demo #90
+scripts/verify-public-url.sh --production --hsts --cutover   # after the cutover (needs the tunnel)
+```
+
+Its burst check trips the shared rate limit for a few seconds, so do not run it
+while a load test or the probe needs the site.
+
 The address only needs the tunnel to *look up*; the app itself is reachable
 from anywhere without it. Don't commit the address (public-repo rule).
 
