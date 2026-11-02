@@ -4,7 +4,7 @@ Infrastructure, architecture decisions and runbooks for a public demo of
 Kubernetes, Docker, CI/CD, GitOps and observability, running entirely on
 **Oracle Cloud Always Free** (target cost: $0/month).
 
-> **Status (2026-11-01):** live at **[demo.sandeeprn.in](https://demo.sandeeprn.in/docs)** (the API page; a landing page at `/` is #103) on a
+> **Status (2026-11-02):** live at **[demo.sandeeprn.in](https://demo.sandeeprn.in/)** (a landing page; the API page is at `/docs`) on a
 > short-lived OKE target (ADR 0015, 0020): HTTPS with a Let's Encrypt
 > certificate, the CI → GitOps → ArgoCD pipeline, the link shortener on
 > PostgreSQL (creating a link needs a token; redirects are public), a redirect
