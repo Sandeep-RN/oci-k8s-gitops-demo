@@ -3,7 +3,7 @@
 Status: Accepted (2026-10-21, revised 2026-10-21 after review)
 
 ## Context
-Oracle's Always Free tier allows 2 OCPU / 12 GB of Ampere A1 in total. If more than that is held when the $300 trial ends, all A1 instances are disabled and later deleted, not only the excess. A1 capacity is often unavailable ("out of host capacity"), so an instance that is destroyed may not be obtainable again.
+Oracle's Always Free tier allows 2 OCPU / 12 GB of Ampere A1 in total. If more than that is held when the $300 trial ends, all A1 instances are disabled and later deleted, not only the excess. Oracle's Always Free documentation ([freetier.htm](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier.htm)) words it as: "disabled and then deleted after 30 days, unless you upgrade to a paid account". The docs do not say when those 30 days start (at trial end, or when the over-limit usage is detected), so this ADR assumes the worst case: no grace period can be relied on. A1 capacity is often unavailable ("out of host capacity"), so an instance that is destroyed may not be obtainable again.
 
 ## Decision
 - Run k3s on one A1 instance sized at the free limit (2 OCPU / 12 GB) from day 1. Keep shape and size in Terraform variables.
