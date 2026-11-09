@@ -9,6 +9,8 @@ Terms used across the three repos. Use these words in issues, specs and ADRs.
 - **OKE target**: the short-lived, multi-node managed Kubernetes cluster on trial credit that runs the same gitops repo through `overlays/oke`; torn down by 2026-11-15 (ADR 0015). Not the node.
 - **Always Free**: Oracle's permanently free resource limits (2 OCPU / 12 GB of A1), the final target for the demo.
 - **Trial credit**: the 30-day $300 credit, used only for disposable experiments.
+- **Quota policy**: an OCI rule that refuses any create request that would push usage past a set amount; the only real spending cap here (ADR 0021).
+- **Budget**: an OCI spend tracker that emails when actual or forecast spend crosses a threshold, evaluated about every 24 hours. An alarm, not a cap (ADR 0021).
 - **Sync**: ArgoCD making the cluster match the gitops repo.
 - **Tag bump**: the auto-merging PR CI opens in the gitops repo with a new image tag.
 - **Synthetic traffic**: the in-cluster k6 load CronJob.
