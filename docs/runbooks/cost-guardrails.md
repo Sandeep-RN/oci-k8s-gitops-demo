@@ -36,6 +36,12 @@ terraform plan -out=guardrails.tfplan    # expect 5 to add: 1 quota policy, 1 bu
 terraform apply guardrails.tfplan
 ```
 
+OCI allows only one budget per target compartment. If the apply fails with
+`400-LimitExceeded, 1 budgets already exist in target compartment`, another
+budget (for example one made in the Console) already targets the root. Delete
+it (Billing > Budgets), then plan and apply again: resources that were already
+created stay in state, so the second plan shows only what's missing.
+
 A plan cannot check the quota statements. A misspelt quota or family name
 fails only at apply. If it does, fix the name from
 `oci limits definition list --service-name <family> --compartment-id <tenancy>`,

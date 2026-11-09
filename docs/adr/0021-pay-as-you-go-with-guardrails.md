@@ -37,7 +37,7 @@ Order: apply the guardrails, prove a quota blocks (a launch the quota must refus
 - Quotas also block legitimate work. A node-pool resize, a second k3s node or a bigger boot volume will now fail with a quota error until the variable is raised. That friction is intended. The fix is a PR to the variable, never a Console edit (that would be drift).
 - E2.1.Micro is zeroed even though it is Always Free. It is too small for this stack, and a zero is simpler to reason about than an exception.
 - Oracle does not document what a quota does to resources that already exist above it. The values here never sit below current usage: E5 and storage are set to what OKE uses today, and lowered only after the teardown.
-- The budget made earlier in the Console ("Budget-Alert-2-Doller", amount 50) is left alone. It is not in Terraform. The owner can delete it once this budget's first alert has arrived.
+- OCI allows **one budget per target compartment**. The first apply failed with `400-LimitExceeded, 1 budgets already exist in target compartment` because a budget made earlier in the Console also targeted the root. The owner deleted it, and the second apply succeeded (2026-11-10). The quota policy had already been created by the failed run; Terraform kept it in state and only created the rest. Any future budget on the root has to be an alert rule on this one, not a second budget.
 - No non-free resource is created by this ADR.
 
 ## At scale
