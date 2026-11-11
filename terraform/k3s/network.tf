@@ -1,6 +1,8 @@
-# One public subnet for the node. Inbound is SSH from one CIDR only; 6443 is
-# never opened (kubectl goes through an SSH tunnel, ADR 0010). Ports 80/443 from
-# the Network Load Balancer are added with the edge ticket (ADR 0004).
+# One public subnet for the node. Inbound: SSH from one CIDR (ADR 0010), web
+# 80/443 (ADR 0022), PMTU ICMP. 6443 is never opened: kubectl goes through an
+# SSH tunnel. The host firewall is fully open (ADR 0012), so this security list
+# is the only inbound gate: a port not listed here is unreachable, even if a
+# k3s ServiceLB Service binds it on the node.
 
 resource "oci_core_vcn" "this" {
   compartment_id = var.compartment_ocid
@@ -43,6 +45,23 @@ resource "oci_core_security_list" "node" {
     tcp_options {
       min = 22
       max = 22
+    }
+  }
+
+  # Web traffic straight to the node's public IP, no load balancer in between
+  # (ADR 0022): k3s's built-in Traefik listens on 80/443 through ServiceLB.
+  # Port 80 only redirects to HTTPS; certificates use DNS-01 (ADR 0005), so
+  # nothing depends on 80 for ACME.
+  dynamic "ingress_security_rules" {
+    for_each = { http = 80, https = 443 }
+    content {
+      source      = var.web_allowed_cidr
+      protocol    = "6" # TCP
+      description = "${ingress_security_rules.key} to Traefik via ServiceLB"
+      tcp_options {
+        min = ingress_security_rules.value
+        max = ingress_security_rules.value
+      }
     }
   }
 
