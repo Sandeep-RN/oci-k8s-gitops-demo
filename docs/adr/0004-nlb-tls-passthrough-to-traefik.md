@@ -1,6 +1,6 @@
 # 0004. Network Load Balancer with TLS passthrough to Traefik
 
-Status: Accepted (2026-10-21, revised 2026-10-21 after review). Amended by ADR 0020 (TLS and public hostname on OKE).
+Status: Accepted (2026-10-21, revised 2026-10-21 after review). Amended by ADR 0020 (TLS and public hostname on OKE) and ADR 0022 (no NLB on k3s).
 
 ## Context
 An instance's own public IP changes if the instance is recreated, which would break DNS. Always Free includes one Network Load Balancer and one Flexible Load Balancer (the 10 Mbps cap applies to the Flexible LB, not the NLB).

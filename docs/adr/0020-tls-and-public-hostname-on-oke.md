@@ -1,6 +1,6 @@
 # 0020. TLS and the public hostname on OKE, with token-gated link creation
 
-Status: Accepted (2026-10-27). Amends ADR 0004, 0013 and 0015.
+Status: Accepted (2026-10-27). Amends ADR 0004, 0013 and 0015. Its k3s parts are amended by ADR 0022.
 
 ## Context
 The plan put Ingress, TLS and `demo.sandeeprn.in` on the k3s node (ADR 0004, 0005, 0013). The node does not exist: from 2026-10-22 to 2026-10-27 the home region (one availability domain) reported `OUT_OF_HOST_CAPACITY` for A1 at 2/12, 1/6 and 1/4, and for the E2.1.Micro shape too, under constant polling. Upgrading to Pay As You Go is ruled out (cost). OKE runs until 2026-11-15 (ADR 0015) and today serves the app over plain HTTP on the free Flexible Load Balancer, by IP.

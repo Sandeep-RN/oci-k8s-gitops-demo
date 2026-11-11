@@ -23,7 +23,9 @@ Terms used across the three repos. Use these words in issues, specs and ADRs.
 - **External probe**: the scheduled GitHub Actions check of the public URL, measuring what a real user sees.
 - **Runbook**: the written steps for what to check and do when an alert fires.
 - **Core / Stretch**: scope tiers from ADR 0011.
-- **Edge**: everything between the internet and the backend Service: DNS, the NLB, Traefik, TLS, the rate limit (ADR 0020).
+- **Edge**: everything between the internet and the backend Service: DNS, the NLB on OKE or the node's own IP on k3s, Traefik, TLS, the rate limit (ADR 0020, 0022).
+- **ServiceLB**: k3s's built-in load balancer for `LoadBalancer` Services. It needs no cloud load balancer and publishes the node's address as the Service's address. On OCI that is the private IP, because the node never sees its public one (ADR 0022).
+- **externalTrafficPolicy**: a Service setting. `Cluster` may forward to any node and hides the client's IP; `Local` keeps traffic on the receiving node and keeps the client's IP. k3s's Traefik uses `Local` so the rate limit sees real clients (ADR 0022).
 - **Link-creation token**: a named secret token required to create a short link; redirects need none (ADR 0020).
 - **Creation mode**: `token` (now) or `open` (reserved; refuses to start until abuse safeguards exist).
 - **Cutover**: the two-step move from the Flexible LB address to `demo.sandeeprn.in` (ADR 0020).
