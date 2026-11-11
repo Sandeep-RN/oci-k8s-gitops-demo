@@ -70,9 +70,18 @@ resource "oci_core_instance" "node" {
     prevent_destroy = true
 
     # Oracle publishes new image builds regularly. Without this, a newer image
-    # would make Terraform want to replace the node. Changing user_data is NOT
-    # ignored: it also forces replacement, so the plan fails on purpose and the
-    # replacement has to be a deliberate decision.
-    ignore_changes = [source_details[0].source_id]
+    # would make Terraform want to replace the node.
+    #
+    # user_data (cloud-init) runs only at first boot, so a template change can
+    # only matter on a rebuild. Without ignoring it, every template edit makes
+    # Terraform want to replace the node, prevent_destroy then fails EVERY plan
+    # for this root (unrelated network changes included), and the template
+    # could never be fixed. A changed template takes effect on the next
+    # deliberate rebuild (#57); repair a live node over SSH instead
+    # (`sudo bash /usr/local/sbin/bootstrap-node.sh` is safe to re-run).
+    ignore_changes = [
+      source_details[0].source_id,
+      metadata["user_data"],
+    ]
   }
 }
