@@ -1,6 +1,6 @@
 # 0012. Node firewall handled in cloud-init
 
-Status: Accepted (2026-10-21)
+Status: Accepted (2026-10-21). Amended by ADR 0022 (80/443 reach the node directly; no NLB).
 
 ## Context
 Oracle's Ubuntu images ship iptables rules with REJECT entries in the INPUT and FORWARD chains. They block ports 80/443 from the NLB and break k3s pod networking. This is the most likely day-1 blocker.
