@@ -8,6 +8,10 @@ oci_profile      = "oke-demo"
 ssh_allowed_cidr = "<your-public-ip>/32"
 ssh_public_key   = "ssh-ed25519 AAAA...placeholder you@laptop"
 
+# 80/443 are open to everyone by default (ADR 0022). For a private test window
+# before DNS points at the node, narrow to your own IP:
+# web_allowed_cidr = "<your-public-ip>/32"
+
 # Defaults are already the Always Free maximum (2 OCPU / 12 GB / 50 GB boot).
 # node_ocpus      = 2
 # node_memory_gbs = 12

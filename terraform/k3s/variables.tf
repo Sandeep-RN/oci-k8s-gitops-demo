@@ -33,6 +33,17 @@ variable "ssh_allowed_cidr" {
   }
 }
 
+variable "web_allowed_cidr" {
+  description = "CIDR allowed to reach 80/443 on the node (ADR 0022). Public by default; narrow it to your /32 for a private test window before DNS points here."
+  type        = string
+  default     = "0.0.0.0/0"
+
+  validation {
+    condition     = can(cidrhost(var.web_allowed_cidr, 0))
+    error_message = "web_allowed_cidr must be a valid IPv4 CIDR, e.g. 0.0.0.0/0 or 203.0.113.10/32."
+  }
+}
+
 variable "ssh_public_key" {
   description = "Public half of the key used to log in as the default ubuntu user. The private key never goes in the repo."
   type        = string
