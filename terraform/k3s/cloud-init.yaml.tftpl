@@ -41,6 +41,12 @@ write_files:
 
       # 2. Apply the SSH hardening drop-in (written above). Validate first so a
       # typo cannot lock us out.
+      # Ubuntu 24.04 starts sshd through ssh.socket on the first connection,
+      # and only then creates /run/sshd. At first boot no one has connected
+      # yet, so `sshd -t` fails with "Missing privilege separation directory"
+      # and set -e stops the script before k3s is installed (seen 2026-11-11,
+      # #7). Create it first; harmless when it already exists.
+      install -d -m 0755 /run/sshd
       sshd -t
       systemctl restart ssh
 
