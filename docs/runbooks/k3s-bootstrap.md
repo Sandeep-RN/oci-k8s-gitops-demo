@@ -3,10 +3,11 @@
 ADR 0022 (the move), ADR 0006 (sealing keys), ADR 0007 (backups), ADR 0020 (edge).
 Issues: #8 (this draft), #57 (rebuild proof).
 
-> **Status: DRAFT, not run yet.** Written before the k3s gitops side exists
-> (`argocd/clusters/k3s`, W4/W5), so paths and names under it are the planned
-> ones. The steps that reuse tested procedures link to them. After the first
-> real run, replace this banner with the date and what had to change.
+> **Status: DRAFT, not run yet.** The k3s gitops side is merged (cluster root
+> and platform apps #56, monitoring #58, app overlay #57; all 2026-11-12), so
+> the paths below exist, but nothing has been applied to the node yet. The
+> steps that reuse tested procedures link to them. After the first real run,
+> replace this banner with the date and what had to change.
 
 Do this in **one session**, in order. Each step ends with a check; do not go
 on until it passes. Needed: the node is Ready (`scripts/k3s-verify.sh`, see
@@ -90,6 +91,13 @@ $K get sealedsecrets -A \
   copied unchanged (same names and namespaces, `--scope strict`).
 - Postgres starts on an empty volume; the backend is not fully ready until
   step 6 (it creates an empty table first, ADR 0016).
+- The link-shortener Application needs the monitoring CRDs (ServiceMonitor,
+  Probe, PrometheusRule) from the monitoring app. It has no sync wave and
+  retries 5 times, about 12 minutes in total. If kube-prometheus-stack is
+  slower than that on the 12 GB node, the Application stops retrying: once
+  monitoring is Healthy, run `argocd app sync link-shortener` (the ArgoCD UI
+  works too). It has no wave on purpose: ordering it behind monitoring would
+  take the site down whenever monitoring is unhealthy.
 
 **Traefik edge checks** (ADR 0022; before any DNS change):
 
@@ -106,7 +114,16 @@ apply. Do not go on; fall back as ADR 0022 describes (`node-external-ip` and
 
 cert-manager issues by DNS-01 (ADR 0005), which needs no A record, so the
 certificate can be ready while `demo.sandeeprn.in` still points at OKE.
-Staging issuer first, then production (rate limits).
+On k3s the Ingress asks the production issuer straight away: CI requires
+`letsencrypt-production` on every Ingress, and DNS-01 is already proven on OKE.
+Let's Encrypt allows about 5 identical production certificates per week (check
+its current limits), and OKE, this bootstrap and the rebuild proof (#57) each
+issue one. So if the first order fails, read the events before anything
+retries, and fix the cause; do not delete and recreate the Certificate in a loop:
+
+```bash
+$K -n link-shortener describe certificate,certificaterequest,order,challenge
+```
 
 ```bash
 $K get certificate -A                  # READY True
@@ -116,8 +133,8 @@ curl -sSv --resolve demo.sandeeprn.in:443:$IP -o /dev/null https://demo.sandeepr
 curl -sS --resolve demo.sandeeprn.in:80:$IP -o /dev/null -w '%{http_code} %{redirect_url}\n' http://demo.sandeeprn.in/   # 308 to https
 ```
 
-Check: the issuer is Let's Encrypt production, not staging (production only
-once staging passed). Port 80 answers with the 308 redirect.
+Check: the issuer is Let's Encrypt production (not "TRAEFIK DEFAULT CERT").
+Port 80 answers with the 308 redirect.
 
 ## 6. Restore the data
 
@@ -131,8 +148,8 @@ the new empty volume plus `pg_restore --clean --if-exists`.
 OCI="oci --auth security_token --profile oke-demo"
 NS=$($OCI os ns get --query data --raw-output)
 B=oci-k8s-gitops-demo-pg-backups
-$OCI os object list -ns "$NS" -bn "$B" --query 'data[].{name:name,size:size}' --output table
-O=link-shortener/<latest OKE timestamp>.pgc     # the one written by OKE, before the cluster label existed
+$OCI os object list -ns "$NS" -bn "$B" --prefix link-shortener/ --query 'data[].{name:name,size:size}' --output table
+O=link-shortener/oke/<latest timestamp>.pgc     # the newest OKE backup: see the note below
 $OCI os object get -ns "$NS" -bn "$B" --name "$O" --file restore.pgc
 $K -n link-shortener wait --for=condition=Ready pod/postgres-0 --timeout=300s
 $K -n link-shortener exec -i postgres-0 -- sh -c 'pg_restore --no-owner --role=linkshortener_app --clean --if-exists --exit-on-error -U "$POSTGRES_USER" -d linkshortener' < restore.pgc
@@ -146,12 +163,19 @@ node, with DNS still on OKE:
 curl -sS --resolve demo.sandeeprn.in:443:$IP -o /dev/null -w '%{http_code} %{redirect_url}\n' https://demo.sandeeprn.in/<example-code>   # 302
 ```
 
+Which object is "the newest OKE backup": OKE objects carry the cluster in
+their name from the night of 2026-11-13 (`link-shortener/oke/<timestamp>.pgc`).
+Before that night, the newest one is the un-prefixed
+`link-shortener/<timestamp>.pgc`. Pick the newest of both kinds.
+
 Links created on OKE after that backup are lost (ADR 0007 accepts up to a
 day). For a smaller gap, take a manual backup on OKE just before this step
 (see the alert section of the backup runbook), and use that object.
 
-Then run one manual backup on k3s and check the object appears under the
-k3s cluster label (W5). That also proves the node's instance principal may
+Then run one manual backup on k3s. Check that its log ends with
+`uploaded link-shortener/k3s/<timestamp>.pgc` (the job refuses to run if the
+overlay sets no cluster) and that the object is listed under
+`link-shortener/k3s/`. That also proves the node's instance principal may
 write to the bucket (the policy was inferred from code, not tested on k3s).
 
 ## 7. DNS switch (the only moment the URL can go dark)
