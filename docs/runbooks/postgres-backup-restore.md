@@ -11,7 +11,7 @@ Every command below was run as written.
 |---|---|
 | Schedule | CronJob `link-shortener/postgres-backup`, 03:00 Asia/Kolkata nightly |
 | Format | `pg_dump --format=custom` (checked with `pg_restore --list` before upload) |
-| Destination | Bucket `oci-k8s-gitops-demo-pg-backups`, objects `link-shortener/<UTC timestamp>.pgc` |
+| Destination | Bucket `oci-k8s-gitops-demo-pg-backups`, objects `link-shortener/<cluster>/<UTC timestamp>.pgc`, where the cluster (`oke` or `k3s`) is set by each overlay. OKE objects written before this change (up to the night of 2026-11-12) have no cluster segment: `link-shortener/<UTC timestamp>.pgc` |
 | Retention | 14 days, deleted by a bucket lifecycle rule (`terraform/shared`) |
 | Cluster's access | **Write-only**: create and list objects in that bucket; read, overwrite and delete are refused (verified, see below) |
 | Restore access | Your own OCI login, from the laptop |
@@ -57,7 +57,7 @@ Access to the cluster: [access runbook](access.md).
    kubectl -n link-shortener wait job/postgres-backup-manual-<HHMM> --for=condition=complete --timeout=420s
    ```
 
-   The upload log ends with `uploaded link-shortener/<timestamp>.pgc`. The
+   The upload log ends with `uploaded link-shortener/<cluster>/<timestamp>.pgc`. The
    alert clears within about 15 minutes.
 
 ## Restore drill (do this after any change to the backup path)
@@ -68,7 +68,7 @@ them. The live database is only read.
 ```bash
 # 1. Pick and download a dump with your own login (the cluster cannot read it).
 $OCI os object list -ns "$NS" -bn "$B" --query 'data[].{name:name,size:size}' --output table
-O=link-shortener/<timestamp>.pgc
+O=link-shortener/<cluster>/<timestamp>.pgc     # older OKE objects: link-shortener/<timestamp>.pgc
 $OCI os object get -ns "$NS" -bn "$B" --name "$O" --file restore.pgc
 
 # 2. Restore into a scratch database.

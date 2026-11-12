@@ -32,8 +32,9 @@
 # Checks that create things: the valid-token check creates ONE link to
 # https://example.com/... (recorded as created by the token's name). The burst
 # sends many cheap GET /healthz requests and expects at least one 429. The
-# limit is shared by all clients (demo #97), so do not run this while the
-# external probe or a load test depends on the site.
+# limit is shared by all clients on OKE (demo #97), so there do not run this
+# while the external probe or a load test depends on the site. On k3s it is
+# per client (ADR 0022): only your own address is limited.
 #
 # Output masks IPv4 addresses. Exit codes: 0 all checks passed (skips are
 # listed), 1 at least one failed, 2 bad usage.

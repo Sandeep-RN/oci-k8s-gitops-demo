@@ -53,9 +53,12 @@ Go from the outside in and stop at the first broken layer.
 | 3. Certificate | `echo \| openssl s_client -connect demo.sandeeprn.in:443 -servername demo.sandeeprn.in 2>/dev/null \| openssl x509 -noout -issuer -enddate` | Issuer is Let's Encrypt (not "TRAEFIK DEFAULT CERT"), `notAfter` more than 30 days away | Step C |
 | 4. Routing | `curl -s -o /dev/null -w '%{http_code}\n' https://demo.sandeeprn.in/healthz` | `200` | `404` from Traefik: the Ingress is missing. `429`: rate limit (below). `502/503`: backend pods, see the [SLO runbook](slo-redirect-availability.md) |
 
-Rate limit: it is shared by all clients (the NLB hides client addresses,
+Rate limit: on OKE it is shared by all clients (the NLB hides client addresses,
 issue #97), 5 requests a second with a burst of 10. A busy loop on your own
-laptop can lock everyone out for a few seconds. It is a 429, not an outage.
+laptop can lock everyone out for a few seconds. On k3s it is per client
+(Traefik keeps the client address, ADR 0022): 20 requests a second with a
+burst of 40, so a busy loop locks out only that address. Either way it is a
+429, not an outage.
 
 **A. external-dns** (record missing, stale or wrong):
 
