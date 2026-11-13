@@ -1,6 +1,6 @@
 # 0013. Reserved public IP for the NLB and Terraform-managed DNS
 
-Status: Accepted (2026-10-21). Amended by ADR 0020 (TLS and public hostname on OKE).
+Status: Accepted (2026-10-21). Superseded by ADR 0020 (external-dns keeps the record; no reserved IP; no Cloudflare record in Terraform) and, on k3s, by ADR 0022 (the node's ephemeral public IP).
 
 ## Context
 If the NLB is recreated with a new ephemeral IP, the DNS record must change by hand. A rebuild should need no manual DNS step.

@@ -1,6 +1,6 @@
 # 0003. Terraform state in OCI Object Storage (native oci backend)
 
-Status: Accepted (2026-10-21, revised 2026-10-21 after review)
+Status: Accepted (2026-10-21, revised 2026-10-21 after review). Note (2026-11-13): Terraform and its backend authenticate with short-lived session tokens (`auth = "SecurityToken"`), not with an API key.
 
 ## Context
 Local state can be lost and does not show production habits. The repo is public, so state (which contains OCIDs and IPs) must never be committed. The S3-compatible backend needs Customer Secret Keys (max 2 per user) and its locking on OCI is uncertain.

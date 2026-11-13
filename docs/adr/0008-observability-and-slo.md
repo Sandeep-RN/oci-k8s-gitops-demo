@@ -1,6 +1,6 @@
 # 0008. kube-prometheus-stack and a redirect SLO with burn-rate alerts
 
-Status: Accepted (2026-10-21, revised 2026-10-21 after review). The external probe's role is amended by ADR 0019 (2026-10-27).
+Status: Accepted (2026-10-21, revised 2026-10-21 after review). The external probe's role is amended by ADR 0019 (2026-10-27). The k6 load CronJob and the HPA mentioned below were not built (first in ADR 0011's cut order).
 
 ## Context
 A generic "CPU above 80%" alert says little about user experience. The demo should show reliability thinking, and the node has limited memory and disk.

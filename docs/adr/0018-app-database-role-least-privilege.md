@@ -1,6 +1,6 @@
 # 0018. The backend connects with its own non-superuser database role
 
-Status: Accepted (2026-10-25)
+Status: Accepted (2026-10-25). Amended by ADR 0022 (k3s reuses the OKE sealing key, so the same sealed credential files are used unchanged).
 
 ## Context
 The backend connected to Postgres as `POSTGRES_USER`, the role the official image creates at first start. That role is a **superuser** (found during the #53 outage test, tracked in #65). A superuser can run operating system commands on the database server (`COPY ... TO PROGRAM`), read every role's password hash, create roles, and change any setting. So a bug in the app, such as SQL injection, would hand an attacker the Postgres container and every other database on it.

@@ -1,6 +1,6 @@
 # oci-k8s-gitops-demo (infra + docs)
 
-Workspace-level rules and PLAN.md live one folder up. Read them first.
+Workspace-level rules and the working plan are private files one folder up (they are not in this repo). Read them first.
 
 - This repo: Terraform for OCI, architecture docs, ADRs, runbooks.
 - Keep instance shape/size in variables (OCPU, memory, node count). The node

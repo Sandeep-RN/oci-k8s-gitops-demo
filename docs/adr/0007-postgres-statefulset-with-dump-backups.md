@@ -1,6 +1,6 @@
 # 0007. PostgreSQL as a StatefulSet with nightly dump backups
 
-Status: Accepted (2026-10-21, revised 2026-10-21 after review)
+Status: Accepted (2026-10-21, revised 2026-10-21 after review). Amended by ADR 0017 (backup auth: instance principals, write-only; 14-day lifecycle) and ADR 0022 (backup object names carry the cluster).
 
 ## Context
 The app needs a database. On a single 12 GB node an operator's failover has nothing to fail over to, and every extra controller costs memory and learning time.

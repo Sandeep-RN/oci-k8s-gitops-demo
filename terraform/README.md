@@ -4,9 +4,10 @@ One root per lifecycle, each with its own state key in the shared bucket:
 
 | Root | What | Lifecycle |
 |------|------|-----------|
-| `oke/` | Short-lived OKE target (ADR 0015) | Destroy by 2026-11-15 |
+| `oke/` | Short-lived OKE target (ADR 0015) | Served the site until 2026-11-12; destroy is issue #13 (due 2026-11-15) |
 | `shared/` | Postgres backup bucket, lifecycle rule, write-only IAM for the nodes (ADR 0017) | Long-lived; bucket has `prevent_destroy` |
-| `k3s/` | Always Free k3s node and network (ADR 0001); the network is applied, the node waits for A1 capacity. Edge and DNS per ADR 0020 (no reserved IP; external-dns) | Long-lived, `prevent_destroy`; not applied yet (waiting for A1 capacity, `scripts/a1-wait-and-apply.sh`) |
+| `k3s/` | The Always Free k3s node and its network (ADR 0001, 0022): VCN, public subnet, security list (SSH from one CIDR, 80/443), one A1 instance | Long-lived; the instance has `prevent_destroy`. Applied; the node runs since 2026-11-11 |
+| `guardrails/` | Tenancy quota policy (the hard cap) and one budget with three alert rules (ADR 0021) | Long-lived; tightened after the OKE teardown |
 
 ## One-time bootstrap (ADR 0003)
 
@@ -20,13 +21,34 @@ scripts/bootstrap-state.sh     # idempotent; writes git-ignored backend.hcl and 
 Auth uses short-lived session tokens (`auth = "SecurityToken"`), not a
 long-lived API key on disk. Refresh with `oci session refresh --profile oke-demo`.
 
+## k3s node (`k3s/`, ADR 0001, 0022)
+
+- The node is Always Free sized: variable validations refuse more than 2 OCPU
+  or more than 12 GB of memory (`k3s/variables.tf`).
+- cloud-init installs k3s and runs only at first boot, which is why `user_data`
+  is ignored after creation (`ignore_changes` in `k3s/main.tf`).
+- Reach the cluster with `scripts/k3s-tunnel.sh` and check it with
+  `scripts/k3s-verify.sh`. See [k3s-access](../docs/runbooks/k3s-access.md) and
+  [k3s-bootstrap](../docs/runbooks/k3s-bootstrap.md).
+
+## Cost guardrails (`guardrails/`, ADR 0021)
+
+- Holds one tenancy quota policy (the hard cap) and one budget with three
+  alert rules (the alarm).
+- Real values live only in the git-ignored `guardrails/terraform.tfvars`; the
+  repo has placeholders only. Steps and checks are in
+  [cost-guardrails](../docs/runbooks/cost-guardrails.md).
+
 ## OKE target (`oke/`, ADR 0015)
+
+The OKE target served the site until 2026-11-12. It still exists with no
+public way in; its teardown is issue #13 (due 2026-11-15).
 
 ```
 cd terraform/oke
 terraform init -backend-config=../backend.hcl
 terraform plan -out=oke.tfplan      # expect 15 resources on first run
-terraform apply oke.tfplan          # ~10-15 min; starts billing (~$2/day)
+terraform apply oke.tfplan          # ~10-15 min; starts billing (about SGD 3.05 a day)
 ```
 
 - Basic cluster (free control plane), 2 × `VM.Standard.E5.Flex` 1 OCPU / 8 GB

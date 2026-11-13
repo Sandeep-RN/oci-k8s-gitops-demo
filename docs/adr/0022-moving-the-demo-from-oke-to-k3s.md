@@ -1,6 +1,6 @@
 # 0022. Moving the demo from OKE to k3s: edge without a load balancer, reused sealing key, data moved, rebuild on the same VM
 
-Status: Accepted (2026-11-11). Decided by the owner on 2026-11-03; the client-IP and DNS-address parts were decided on 2026-11-11 after a live test. Amends ADR 0001 (rebuild), 0004 and 0012 (no NLB on k3s), 0015 (the free NLB is not kept for k3s) and the k3s parts of ADR 0020.
+Status: Accepted (2026-11-11). Decided by the owner on 2026-11-03; the client-IP and DNS-address parts were decided on 2026-11-11 after a live test. Amends ADR 0001 (rebuild), 0004 and 0012 (no NLB on k3s), 0010 (the node's ports 80 and 443 are public), 0015 (the free NLB is not kept for k3s), 0018 (sealed credentials reused) and the k3s parts of ADR 0020.
 
 ## Context
 The k3s node exists since 2026-11-11 (A1, 2 OCPU / 12 GB, k3s v1.36.5+k3s1, PAYG per ADR 0021). OKE serves `https://demo.sandeeprn.in` until its teardown (#13, by 2026-11-15), and its last nightly backup expires 14 days after it is written. Everything that runs on OKE has to move: the edge, the secrets, the data. The plan (ADR 0004) put a Network Load Balancer in front of k3s. OKE holds the one free NLB until #13.
@@ -24,7 +24,7 @@ Facts checked before deciding:
 **Edge**
 - **No load balancer on k3s.** Traffic goes to the node's ephemeral public IP, then to k3s's built-in Traefik (ADR 0020's choice for k3s) through ServiceLB. The node's security list allows TCP 80 and 443 from `web_allowed_cidr` (default anywhere; PR #124, applied 2026-11-11). It is the only inbound gate, since the host firewall is open (ADR 0012). Port 80 only redirects to HTTPS; certificates use DNS-01 (ADR 0005).
 - **No reserved IP** (as in ADR 0020). The node is never destroyed (below), so its ephemeral IP is stable in practice.
-- **Traefik's Service uses `externalTrafficPolicy: Local`**, set in the gitops repo (k3s's `HelmChartConfig` for the bundled chart, W4). Traefik then sees real client IPs, so the per-IP rate limit counts each client separately on k3s, with no proxy protocol (#97). On one node, `Local` has no downside: the only Traefik pod is always local.
+- **Traefik's Service uses `externalTrafficPolicy: Local`**, set in the gitops repo (k3s's `HelmChartConfig` for the bundled chart, #114). Traefik then sees real client IPs, so the per-IP rate limit counts each client separately on k3s, with no proxy protocol (#97). On one node, `Local` has no downside: the only Traefik pod is always local.
 - **`node-external-ip` is not set.** It would break `Local`.
 
 **Public address in DNS**
@@ -41,7 +41,7 @@ Facts checked before deciding:
 
 **Data**
 - **Restore OKE's last nightly backup into k3s Postgres** (`docs/runbooks/postgres-backup-restore.md`), so links that already exist, like the landing page's example, keep working. Do it within 14 days of that backup (bucket lifecycle). The bucket lives in `terraform/shared` and survives #13.
-- **Backup object names and backup alerts carry a cluster label** (W5), so the two clusters cannot overwrite or mask each other's backups during the overlap.
+- **Backup object names and backup alerts carry a cluster label** (#115), so the two clusters cannot overwrite or mask each other's backups during the overlap.
 
 **Rebuild proof (#57) on the same VM**
 - Prove "rebuild from clean state" (ADR 0001) by removing k3s from the node (`k3s-uninstall.sh`) and rebuilding the cluster: bootstrap script, ArgoCD, sealing key, data restore. The VM, its boot volume and its IP are never destroyed. `prevent_destroy` stays.
