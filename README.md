@@ -170,6 +170,7 @@ docs/evidence/   Write-ups of tests run on the clusters
 docs/roadmap.md  Known limits, next steps, what changes at scale
 .github/         External probe (the slow outside check), gitleaks history scan
 GLOSSARY.md      Project terms
+PROJECT_BRIEF.md Facts, numbers and ready-made text for writing about this project elsewhere
 ```
 
 ## Cost
