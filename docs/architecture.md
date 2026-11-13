@@ -3,25 +3,25 @@
 How the OCI Kubernetes GitOps demo is built, what runs today, and why it is
 shaped this way. Decisions link to their ADRs in [`docs/adr/`](adr/).
 
-> **As of 2026-11-01.** On the short-lived **OKE target**, the delivery
-> pipeline, the link shortener on PostgreSQL, HTTPS at `demo.sandeeprn.in`
-> (production certificate, token-gated link creation), observability (SLO
-> alerts proven with a live outage), and nightly backups (restore tested) are
-> built and verified end to end. The long-lived **k3s node** on Always Free has its
-> Terraform written (`terraform/k3s`) but is **not running yet**, because
-> Ampere A1 capacity in the home region is unavailable. Sections marked
-> *Planned* describe that design.
+> **As of 2026-11-13.** `https://demo.sandeeprn.in` runs on a single-node k3s
+> cluster on one Ampere A1 VM sized inside Always Free, since the DNS switch on
+> 2026-11-12. The OKE target served the site until 2026-11-12. It still exists
+> with no public way in; its teardown is issue
+> [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13) (due
+> 2026-11-15). How the project got here:
+> [section 11](#11-history-the-oke-target-and-the-move-to-k3s).
 
 ## 1. At a glance
 
-| | Built and verified | Planned |
+| | Built and verified | Not built, or still open |
 |---|---|---|
-| **App** | FastAPI link shortener on PostgreSQL: 302 redirects, fail-fast 503s during a database outage, request metrics; non-root multi-arch image | Frontend |
-| **CI** | Lint, test (with real Postgres), Trivy scan, amd64+arm64 build, push to GHCR, auto-merging tag-bump PR; gitleaks full-history scan in all three repos | — |
-| **GitOps** | ArgoCD v3.5.6 app of apps, self-managed, Kustomize base and overlays, Sealed Secrets, `validate` check (kubeconform, Helm render, promtool, amtool) | k3s cluster root |
-| **Clusters** | OKE target: 2 x86 nodes across fault domains, private API, public NLB | k3s on one Always Free A1 node |
-| **Edge** | `https://demo.sandeeprn.in` on OKE (ADR 0020): free OCI NLB, Traefik, cert-manager (Let's Encrypt production, renews itself), external-dns, HSTS, shared rate limit, token-gated link creation; [verify script](../scripts/verify-public-url.sh) and [runbook](runbooks/edge.md) | The same edge on k3s if A1 capacity appears |
-| **Ops** | Remote Terraform state, Bastion access, budget alerts; Prometheus, Grafana, Alertmanager; redirect SLO with burn-rate alerts to Discord; external probe; nightly backups with a tested restore; runbooks; node-drain evidence | Clean-state rebuild on k3s |
+| **App** | FastAPI link shortener on PostgreSQL: 302 redirects, fail-fast 503s during a database outage, request metrics; landing page at `/` and API page at `/docs`, both served by the backend; non-root multi-arch image | No separate frontend (`frontend/` in the app repo is an empty placeholder) |
+| **CI** | Lint, test (with real Postgres), Trivy scan, amd64+arm64 build, push to GHCR, auto-merging tag-bump PR; gitleaks full-history scan in all three repos | |
+| **GitOps** | ArgoCD v3.5.6 app of apps `root-k3s`, self-managed, Kustomize base and overlays, Sealed Secrets, `validate` check (kubeconform, Helm render, promtool, amtool) | |
+| **Cluster** | k3s v1.36.5+k3s1 on one A1 VM (2 OCPU / 12 GB), Terraform-managed, `prevent_destroy` | Rebuild proof on the same VM ([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57)); HPA; NetworkPolicies |
+| **Edge** | No load balancer: node public IP, k3s's Traefik, real client IPs, per-client rate limit, cert-manager (Let's Encrypt production), external-dns, HSTS, token-gated link creation | |
+| **Ops** | Prometheus, Grafana, Alertmanager; redirect SLO with burn-rate alerts to Discord; in-cluster and external probes; nightly backups with tested restores; quota cap and budget alerts; runbooks | k6 load job; log stack; dead man's switch for the monitoring stack |
+| **OKE target** | Served the site until 2026-11-12; drain, PDB and rollout evidence captured | Teardown ([#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13), due 2026-11-15), then the quota tightening |
 
 ## 2. Repositories
 
@@ -34,11 +34,11 @@ requests (ADR 0011).
 | [`oci-k8s-gitops-demo-app`](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-app) | Backend code, Dockerfile, CI | Humans |
 | [`oci-k8s-gitops-demo-gitops`](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-gitops) | Kubernetes manifests, ArgoCD apps; the source of truth for every cluster | Humans, plus CI for image tags only |
 
-## 3. Delivery pipeline (built)
+## 3. Delivery pipeline
 
 A merge in the app repo reaches the cluster with no manual step and no
-credentials to the cluster outside it. Verified on 2026-10-23: app commit
-`8ec9f5be` was running on both OKE pods after one merge.
+credentials to the cluster outside it. The image is built for amd64 and arm64;
+the arm64 image is what the A1 node runs.
 
 ```mermaid
 sequenceDiagram
@@ -53,7 +53,7 @@ sequenceDiagram
     Dev->>App: merge PR to main
     App->>App: ruff + pytest
     App->>App: build amd64, Trivy scan (fail on fixed HIGH/CRITICAL)
-    App->>GHCR: push amd64+arm64 image :<git sha>
+    App->>GHCR: push amd64+arm64 image :GIT_SHA
     App->>Git: open PR "Bump backend image", auto-merge on
     Git->>Git: validate (kustomize render + kubeconform)
     Git->>Git: auto-merge (squash)
@@ -62,344 +62,409 @@ sequenceDiagram
     K8s->>GHCR: pull image, rolling update (maxUnavailable 0)
 ```
 
+Measured on the OKE target: on 2026-10-23, app commit `8ec9f5be` was running
+on both pods after one merge. On 2026-11-08, a rollout under traffic took about
+7 minutes from merge to live, with 514 requests and 0 failures
+([evidence](evidence/oke-final-2026-11-10.md)).
+
 Key properties:
 
 - **Scan before push.** A vulnerable image never reaches the registry. On its
   first run, Trivy blocked three HIGH CVEs in Starlette, which were fixed by
-  upgrading.
-- **Immutable tags.** Images are tagged with the git SHA; `latest` is never used.
+  upgrading. On 2026-11-08 it blocked two fixable HIGH CVEs in `zlib1g` in the
+  base image.
+- **One tag per commit.** Images are tagged with the git SHA and a tag is never
+  reused; `latest` is never used.
 - **Every deploy is a merged PR** in the gitops repo, so the deploy history is
   the PR history (ADR 0009).
 - **Least privilege.** The bump job has no `GITHUB_TOKEN` permissions. It uses a
   fine-grained token limited to the gitops repo (contents and pull requests).
   Third-party Actions are pinned by commit SHA.
-- **A guarded `main`.** The gitops repo's `main` requires a PR and the
-  `validate` check, pinned to GitHub Actions. Auto-merge cannot bypass a broken
-  manifest.
+- **A guarded `main`.** All three repos require a PR and linear history. The
+  gitops repo also requires the `validate` check, and the app repo the `test`
+  check. Auto-merge cannot bypass a broken manifest.
 
-## 4. GitOps structure (built)
+## 4. GitOps structure
 
 ```
 oci-k8s-gitops-demo-gitops/
   apps/link-shortener/
     base/                  Deployment, Service, PDB, Postgres StatefulSet, backup CronJob,
-                           ServiceMonitor, SLO rules, dashboard; image tag set by CI
-    overlays/k3s/          Always Free node (planned cluster)
-    overlays/oke/          ClusterIP Service, Ingress, rate-limit and HSTS middlewares, strict
-                           one-pod-per-node spread, oci-bv volume, sealed Postgres credentials
-                           and link-creation tokens
-  edge/                    Helm values for Traefik, cert-manager, external-dns
-  platform/                sealed-secrets; cert-manager-issuers and external-dns with their
-                           sealed Cloudflare tokens
-  monitoring/              kube-prometheus-stack values, Grafana and Discord SealedSecrets
+                           ServiceMonitor, Probe, SLO rules, dashboard; image tag set by CI
+    overlays/k3s/          Ingress, rate-limit and HSTS middlewares, local-path volume,
+                           backup cluster name, sealed Postgres credentials and link tokens
+    overlays/oke/          OKE differences; no Ingress since the DNS switch
+  edge/                    cert-manager/ and external-dns/ values (values-k3s.yaml, values-oke.yaml);
+                           traefik-k3s/ (HelmChartConfig for k3s's Traefik, sealed public IP,
+                           ServiceMonitor); traefik/ (upstream chart values, OKE only)
+  platform/                sealed-secrets controller; cert-manager-issuers and external-dns
+                           with their sealed Cloudflare tokens
+  monitoring/              kube-prometheus-stack/ (values.yaml, values-k3s.yaml, values-oke.yaml),
+                           blackbox-exporter/, and k3s/ and oke/ for the Grafana and Discord SealedSecrets
+  scripts/                 seal-cloudflare-token.sh, seal-link-tokens.sh, seal-traefik-public-ip.sh
   tests/prometheus/        promtool unit tests for the alert rules
   argocd/
     install/               upstream ArgoCD v3.5.6, pinned, via Kustomize
-    clusters/oke/
-      root.yaml            the root "app of apps" (applied once by hand)
-      apps/                AppProject "demo"; Applications argocd, sealed-secrets,
-                           monitoring, traefik, cert-manager(+issuers), external-dns,
-                           blackbox-exporter, link-shortener
+    clusters/k3s/          root.yaml (root-k3s), apps/, sealed-secrets-cert.pem
+    clusters/oke/          the same for the OKE target
 ```
 
 ```mermaid
 flowchart LR
-    root["root-oke<br/>(applied once)"] --> proj["AppProject demo<br/>sync wave -1"]
-    root --> argo["Application argocd<br/>path argocd/install<br/>prune off, server-side apply"]
-    root --> app["Application link-shortener<br/>project demo<br/>path overlays/oke"]
-    root --> ss["Application sealed-secrets<br/>sync wave -1"]
-    root --> mon["Application monitoring<br/>kube-prometheus-stack, sync wave -1"]
-    argo -. manages .-> argocd_ns["ArgoCD itself"]
-    app --> ns["namespace link-shortener"]
+    root["root-k3s<br/>(applied once by hand)"] --> early["sync wave -1<br/>AppProject demo, sealed-secrets,<br/>cert-manager, monitoring"]
+    root --> later["sync wave 0<br/>cert-manager-issuers, external-dns,<br/>traefik-config, argocd,<br/>blackbox-exporter, link-shortener"]
 ```
 
-- **Two manual commands per cluster, ever:** `kubectl apply --server-side -k
-  argocd/install`, then `kubectl apply -f argocd/clusters/<cluster>/root.yaml`.
-  After that, ArgoCD upgrades itself from Git.
+`root-k3s` creates 9 Applications and one AppProject. With the root, ArgoCD
+shows 10 Applications. The `argocd` Application manages ArgoCD itself (prune
+off, server-side apply); `link-shortener` uses the `demo` project and
+`overlays/k3s`.
+
+- **Bootstrap is three manual steps, in this order**
+  ([runbook](runbooks/k3s-bootstrap.md)): restore the Sealed Secrets keys from
+  the offline backup, then `kubectl apply --server-side -k argocd/install`, then
+  `kubectl apply -f argocd/clusters/k3s/root.yaml`. The keys come first because
+  a controller that starts without them makes a new key, and no sealed file in
+  the repo would decrypt. After that, ArgoCD upgrades itself from Git and every
+  change is a PR.
 - **The `demo` AppProject** limits workloads to this repo and the
-  `link-shortener` namespace.
-- **Overlays carry only real environment differences.** k3s will use Traefik
-  Ingress and `local-path` storage. OKE uses the Traefik Ingress behind the
-  NLB (ADR 0020), strict spread, and `oci-bv` volumes.
+  `link-shortener` namespace. Platform apps that need cluster-scoped objects
+  or `kube-system` use the `default` project.
+- **Overlays carry only real environment differences.** On k3s: the Postgres
+  volume on `local-path` (5Gi), `BACKUP_CLUSTER=k3s`, the per-client rate
+  limit, and the landing page's example link. On OKE: `oci-bv` volumes, a strict
+  one-pod-per-node spread, and a shared rate limit. k3s runs on the OKE sealing
+  keys, so both overlays hold the same sealed files (ADR 0022).
 
-## 5. OKE target (built, short-lived)
+## 5. The cluster: k3s on one Always Free node
 
-A second deploy target paid from the trial credit (ADR 0015). It proves that
-the same GitOps repo runs on a managed, multi-node cluster. **It is torn down
-by 2026-11-15** to keep the project at $0/month (issue #13).
+| | |
+|---|---|
+| Node | One `VM.Standard.A1.Flex` VM, 2 OCPU / 12 GB, 50 GB boot volume, Ubuntu 24.04 aarch64 ([ADR 0001](adr/0001-single-node-k3s-on-always-free-a1.md), [ADR 0002](adr/0002-ubuntu-2404-aarch64-node-os.md)) |
+| Kubernetes | k3s v1.36.5+k3s1, single server, state in SQLite (no etcd) |
+| Ingress | k3s's bundled Traefik (chart 40.1.5, Traefik 3.7.13), configured from Git by a `HelmChartConfig` |
+| Service exposure | k3s's ServiceLB binds Traefik's 80/443 on the node |
+| Storage | k3s's `local-path` storage class: directories on the boot volume. Postgres 5Gi, Prometheus 10Gi |
+| Workloads | backend x2, PostgreSQL x1, ArgoCD, Sealed Secrets, cert-manager, external-dns, kube-prometheus-stack, blackbox exporter |
+| Running since | 2026-11-11 |
 
-```mermaid
-flowchart TB
-    user(("Internet")) -->|"HTTPS 443"| lb
-    laptop(("Operator laptop")) -->|"SSH port-forward,<br/>allowlisted /32"| bastion
+**First boot** (cloud-init,
+[ADR 0012](adr/0012-node-firewall-and-cloud-init.md)) runs one script,
+`/usr/local/sbin/bootstrap-node.sh`, which is safe to run again. It removes
+the REJECT rules that Oracle's Ubuntu image ships in iptables (they block
+80/443 and break pod networking), so the OCI security list is the only inbound
+gate. It makes SSH key-only with no root login (ADR 0010), then installs the
+pinned k3s version with Traefik and ServiceLB enabled. No secret is in the
+instance metadata: the k3s token and kubeconfig are made on the node and stay
+there. The legacy metadata endpoint (IMDS v1) is disabled.
 
-    subgraph oci["OCI ap-hyderabad-1"]
-      subgraph vcn["VCN 10.20.0.0/16"]
-        subgraph lbsn["public lb subnet"]
-          lb["Network LB<br/>(Always Free, for Traefik)"]
-        end
-        subgraph apisn["private api subnet"]
-          api["Kubernetes API<br/>private endpoint :6443"]
-          bastion["OCI Bastion<br/>private endpoint"]
-        end
-        subgraph wsn["private workers subnet"]
-          n1["node E5.Flex 1 OCPU / 8 GB<br/>FAULT-DOMAIN-1"]
-          n2["node E5.Flex 1 OCPU / 8 GB<br/>FAULT-DOMAIN-2"]
-        end
-        nat["NAT gateway"]
-        sgw["Service gateway"]
-        igw["Internet gateway"]
-      end
-      cp["OKE Basic control plane<br/>(Oracle-managed, free)"]
-    end
+**`prevent_destroy`.** A1 capacity is scarce, and an instance that is destroyed
+may never come back (ADR 0001). Terraform also ignores changes to the image and
+to the cloud-init template, so a new Oracle image or a template edit can never
+plan a replacement. The rebuild proof
+([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57)) keeps the
+VM and rebuilds only the cluster on it
+([ADR 0022](adr/0022-moving-the-demo-from-oke-to-k3s.md)).
 
-    bastion -->|":6443"| api
-    api --- cp
-    lb -->|"NodePort 30000-32767<br/>health 10256"| n1
-    lb --> n2
-    n1 & n2 -->|"image pulls (GHCR)"| nat
-    n1 & n2 -->|"OCI services"| sgw
-    lbsn --- igw
-```
+**What one node cannot do.**
 
-Subnets: `api` 10.20.0.0/28 and `workers` 10.20.10.0/24 (private, no public IPs), `lb` 10.20.20.0/24 (public). One availability domain, three fault domains.
+- No high availability. A node reboot or a Traefik restart is an outage.
+- A drain cannot be shown. With one node the evicted pods have nowhere to go,
+  so a drain blocks on the PDB. The multi-node proof was done on OKE
+  ([section 11](#11-history-the-oke-target-and-the-move-to-k3s)).
+- One Postgres replica on a node-local volume, with no failover. The nightly
+  dump is the recovery path.
+- `local-path` does not enforce volume sizes. The 50 GB boot volume is shared by
+  the OS, images, Postgres and Prometheus, so Prometheus has a size cap of its
+  own (section 7).
 
-| Aspect | Choice | Why |
-|---|---|---|
-| Cluster type | **Basic** | Free control plane; Enhanced bills per hour and is the console default, so Terraform sets the type explicitly |
-| Nodes | 2 × `VM.Standard.E5.Flex`, 1 OCPU / 8 GB | E4 and A1 had no host capacity; E6 has a service limit of 0. **A1 is blocked by a validation rule**, because A1 here would push the tenancy over the Always Free limit and get every A1 instance disabled |
-| Placement | One node per fault domain | The region has one availability domain, so fault domains are the only placement spread available |
-| CNI | Flannel overlay | Same model as k3s; no per-pod VCN IPs |
-| API access | **Private endpoint only**, through OCI Bastion | No public 6443 (ADR 0010). Sessions are short-lived (max 3 h) and limited to one client /32 |
-| Workers | Private subnet, no public IPs | Egress through NAT for GHCR; OCI services through the service gateway |
-| LB rules | Pre-opened in Terraform; cloud controller set to security-list management `None` | Otherwise the controller edits the lists and Terraform drifts. Verified: no drift after LB creation |
-| State | Own state key `oke/terraform.tfstate` | Destroying OKE can never touch the long-lived node |
-| Pinning | Kubernetes `v1.36.4` and an exact node image name | A new Oracle image does not cause a plan diff; preconditions check that the image exists and matches |
-| Tags | `lifecycle=ephemeral-oke`, `teardown_by=2026-11-15` | Teardown can be checked in Cost Analysis with one filter |
+**How the capacity arrived.** From 2026-10-22 the home region (one
+availability domain) reported no A1 capacity at 2/12, 1/6 or 1/4, and none for
+E2.1.Micro either. Polling did not help. The
+account was upgraded to Pay As You Go on 2026-11-11, after cost guardrails were
+applied and proven ([ADR 0021](adr/0021-pay-as-you-go-with-guardrails.md)).
+The A1 node was created the minute the upgrade took effect. The node still fits
+the Always Free allowance.
 
-**Cost:** about USD 2 a day (two E5 nodes and boot volumes). The control plane,
-LB, NAT, Bastion and VCN cost nothing. The trial credit is SGD 400, expiring
-2026-11-19.
+## 6. Edge
 
-**Workload placement:** two backend replicas, `DoNotSchedule` spread on
-hostname (one per node, so one per fault domain), PDB `minAvailable: 1`, and
-rolling updates with `maxUnavailable: 0`. A node drain on this target kept the
-service up (370 requests, 0 failures) and the PDB blocked eviction of the last
-pod: [drain evidence](evidence/oke-drain-2026-10-24.md).
+How a visitor reaches `https://demo.sandeeprn.in` on k3s
+([ADR 0022](adr/0022-moving-the-demo-from-oke-to-k3s.md)).
 
-## 6. Edge (built on OKE)
-
-How a visitor reaches `https://demo.sandeeprn.in` (ADR 0020, which amends
-0004, 0013 and 0015). The cutover ran in two steps on 2026-10-31: the new edge
-was added and verified first, then the app Service became `ClusterIP`, which
-released the old Flexible Load Balancer. The two ways in:
-
-```
-before:  Internet -> OCI Flexible LB (by IP, plain HTTP) -> backend Service -> pods
-now:     Internet -> demo.sandeeprn.in (DNS) -> NLB (TCP passthrough) -> Traefik x2 -> backend ClusterIP -> pods
-```
-
-**The request path.** One visitor request, left to right:
+**Before (OKE, until 2026-11-12):**
 
 ```mermaid
 flowchart LR
-    visitor(("Visitor")) --> cf["Cloudflare DNS<br/>A record, DNS only"]
-    cf --> nlb["OCI NLB<br/>TCP passthrough"]
-    nlb --> traefik["Traefik x2<br/>one per node<br/>TLS, HTTPS redirect,<br/>rate limit, HSTS"]
-    traefik --> svc["backend Service<br/>ClusterIP"]
-    svc --> pods["backend x2<br/>token check on<br/>POST /api/links"]
-    pods --> pg[("PostgreSQL")]
+    v1(("Visitor")) --> nlb["OCI NLB<br/>TCP passthrough"]
+    nlb --> t1["Traefik x2<br/>one per node"]
+    t1 --> b1["backend x2"]
 ```
+
+**Today (k3s):**
+
+```mermaid
+flowchart LR
+    v2(("Visitor")) --> ip["Node public IP<br/>security list: 80, 443"]
+    ip --> t2["Traefik<br/>via ServiceLB"]
+    t2 --> b2["backend x2<br/>token check on<br/>POST /api/links"]
+```
+
+**Why there is no load balancer:**
+
+- **The node only knows its private IP.** OCI maps the public IP outside the
+  VM, so ServiceLB reports the private address in the Service status.
+- **`externalTrafficPolicy: Local` keeps client IPs.** A packet capture on the
+  node (2026-11-11) showed the visitor's own address arriving. With `Local`,
+  Traefik sees it; with k3s's default `Cluster`, every client looked like the
+  pod network gateway. So the rate limit can count each client separately.
+- **Traefik writes the public IP into the Ingress status** from a SealedSecret
+  (`PUBLIC_IP`, sealed only because the repos are public and hold no IPs in
+  plain text). The `node-external-ip` flag would do the same, but would break
+  `Local`.
+- **external-dns publishes that address** to Cloudflare. If the IP ever changed
+  (only if the instance or its VNIC were replaced), it would be re-sealed and
+  the record would follow.
 
 **What keeps it working.** Controllers in the cluster read the one Ingress in
-the gitops repo and act on Cloudflare and Traefik, each with its own
-Cloudflare token:
-
-```mermaid
-flowchart LR
-    ing["Ingress backend<br/>(gitops repo)"] --> edns["external-dns<br/>Cloudflare token 1"]
-    ing --> cm["cert-manager<br/>Cloudflare token 2"]
-    edns -->|"A + TXT owner record"| cf["Cloudflare DNS"]
-    cm -->|"DNS-01 challenge"| cf
-    cm -->|"TLS Secret"| traefik["Traefik"]
-    tokens[("link-tokens<br/>SealedSecret")] -->|"one file per token"| pods["backend pods"]
-```
+the gitops repo and act on Cloudflare and Traefik, each with its own Cloudflare
+token:
 
 | Piece | What it does | Why this way |
 |---|---|---|
 | **DNS** (Cloudflare) | `demo.sandeeprn.in` A record, DNS only (not proxied) | Cloudflare's proxy would end TLS at Cloudflare; here TLS ends at our own certificate. The blog's records in the same zone are untouched |
-| **external-dns** | Creates the A record and a TXT owner record from the Ingress, deletes them when the Ingress goes; ignores private NLB addresses | `policy: sync` deletes only records it owns (TXT owner id), so teardown is clean if the Ingress is removed first. OCI's NLB reports its private IP too; without the filter a second, unreachable A record appeared |
-| **NLB** (free) | Passes TCP 80/443 through to the nodes | Always Free, no reserved IP needed (external-dns follows it). `externalTrafficPolicy: Cluster` means Traefik sees the NLB's address, not the client's |
-| **Traefik** (2 pods, one per node, PDB) | Redirects HTTP to HTTPS, terminates TLS, applies the rate limit and HSTS, routes to the Service | Survives a node drain like the app; the same standard Ingress works on k3s |
-| **cert-manager** | Issues and renews the Let's Encrypt certificate by DNS-01 on Cloudflare; renews 30 days before expiry | DNS-01 needs no inbound port and works through a passthrough NLB. Staging was proven first, then production |
-| **Rate limit** | 5 requests a second, burst 10, **shared by all clients** | The NLB hides client addresses, so a per-IP limit is not possible yet (issue #97, proxy protocol) |
-| **HSTS** | `max-age=15552000` (180 days) on this host only | One-way: browsers enforce HTTPS here until it expires. No `includeSubDomains`, no preload, so the blog is unaffected |
-| **Token gate** | `POST /api/links` needs `Authorization: Bearer <token>`; redirects, lookups and health are public | A public shortener on a real domain is an open redirector and would put the domain on blocklists. Tokens are named and stored with the link (`created_by`), so one can be revoked alone |
+| **external-dns** | Creates the A record and a TXT owner record (owner id `oci-demo-k3s`) from the Ingress; `policy: sync` | It deletes only records it owns, so two clusters can never fight over one name. The private-range exclusion from OKE stays as a guard: a wrongly sealed private IP publishes nothing rather than a dead record |
+| **Entry** | The node's ephemeral public IP; the security list allows TCP 80 and 443 | Costs nothing and has fewer moving parts than a load balancer. An ephemeral IP lives as long as the instance, which `prevent_destroy` protects |
+| **Traefik** (1 pod, k3s's own) | Redirects HTTP to HTTPS (a GET gets 301, other methods 308), terminates TLS, applies the rate limit and HSTS, routes to the Service | The same standard Ingress object as on OKE. Dashboard off (ADR 0014); metrics only on a ClusterIP Service |
+| **cert-manager** | Issues and renews the Let's Encrypt certificate by DNS-01 on Cloudflare; renews 30 days before expiry | DNS-01 needs no inbound port. The site has HTTPS with a production certificate since 2026-10-31; on k3s the certificate was issued on the first order (2026-11-12) |
+| **Rate limit** | 20 requests a second per client, burst 40 | Per client, because Traefik sees real client IPs. A burst of 600 requests from one client got 282 x 429. **Not run:** the check that a second client still gets 200 during that burst |
+| **HSTS** | `max-age=15552000` (180 days) on this host only | Every response re-sends it, so a browser keeps enforcing HTTPS for 180 days after its last visit. No `includeSubDomains`, no preload, so the blog is unaffected |
+| **Token gate** | `POST /api/links` needs `Authorization: Bearer TOKEN`; redirects, lookups and health are public | A public shortener on a real domain is an open redirector and would put the domain on blocklists. Tokens are named and stored with the link (`created_by`), so one can be revoked alone |
 
-**Secrets.** Three kinds, all SealedSecrets in the gitops repo with their values
-in the owner's password manager: the cert-manager Cloudflare token, the
-external-dns Cloudflare token (separate, so a leak or rotation affects one and
-Cloudflare's audit log tells them apart), and the link-creation tokens. Sealing
-scripts: `scripts/seal-cloudflare-token.sh` and `scripts/seal-link-tokens.sh`
-in the gitops repo.
+**Secrets.** Four kinds, all SealedSecrets in the gitops repo: the
+cert-manager Cloudflare token, the external-dns Cloudflare token (separate, so
+a leak or rotation affects one and Cloudflare's audit log tells them apart),
+the link-creation tokens, and the node's public IP. Sealing scripts in the
+gitops repo: `seal-cloudflare-token.sh`, `seal-link-tokens.sh` (it still writes
+to `overlays/oke`; the k3s overlay holds a copy of the same file) and
+`seal-traefik-public-ip.sh`.
 
-**Verified** (evidence: [issue #91](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/91#issuecomment-6547990222)).
-`scripts/verify-public-url.sh --production --hsts --cutover` passed 12 of 12 checks (DNS, HTTPS redirect, trusted chain, HSTS, 401 without
-a token, a link created and followed, rate-limit 429, no app LoadBalancer
-Service left). After the cutover the old load balancer was gone from the
-compartment, `terraform plan` showed no changes, and no 5xx responses were
-recorded over 40 minutes.
+**Verified on k3s** (2026-11-12 and 2026-11-13,
+[bootstrap runbook](runbooks/k3s-bootstrap.md) steps 4, 5 and 8): the Ingress
+status holds the public IP; `curl --resolve` got a trusted Let's Encrypt chain
+before DNS moved. After the switch, `scripts/verify-public-url.sh --production
+--hsts` run without a token passed every check except link creation, which
+needs one; the owner's run with a token passed 9 checks, 0 failed, 2 skipped.
 
-**Operate and tear down.** [Edge runbook](runbooks/edge.md): debug the edge,
-renew the certificate, rotate a Cloudflare token, add or revoke a link-creation
-token. Teardown (issue #13): **delete the Ingress before the cluster**, so
-external-dns removes the record and its TXT owner record; if the cluster goes
-first, remove both by hand.
+**Known limits.** One Traefik pod and one node, so no redundancy at the edge.
+Rate-limit buckets live in that pod's memory, so a second replica would
+double the effective limit. HSTS cannot be withdrawn early. Not tested: whether a pod on
+the node can reach the public hostname (hairpin), so probes avoid it. The
+[edge runbook](runbooks/edge.md) (certificate, token rotation) was written on
+OKE; the k3s checks are in the bootstrap runbook.
 
-**Known limits.** One shared rate-limit bucket; no client address in logs;
-HSTS cannot be withdrawn before it expires (about 2027-04-29); the NLB is
-released with the cluster, so the URL stops working at teardown.
-
-## 7. Observability and backups (built)
+## 7. Observability and backups
 
 ```mermaid
 flowchart LR
-    app["backend pods<br/>/metrics on :9000"] -->|"ServiceMonitor"| prom["Prometheus<br/>8-day retention, 50 GB volume"]
+    app["backend pods<br/>/metrics on :9000"] -->|"ServiceMonitor"| prom["Prometheus<br/>8 days or 8 GB,<br/>10Gi local-path"]
     prom -->|"recording rules"| sli["SLIs: redirect error ratio,<br/>share under 200 ms"]
-    sli -->|"burn-rate alerts"| am["Alertmanager"]
+    sli -->|"burn-rate alerts,<br/>label cluster=k3s"| am["Alertmanager"]
     am -->|"webhook (SealedSecret)"| discord["Discord"]
     prom --> grafana["Grafana dashboard<br/>(from Git)"]
     bbx["blackbox exporter<br/>every 30 s"] -->|"GET /Probe00<br/>via Service"| app
     prom -->|"Probe"| bbx
-    probe["GitHub Actions probe<br/>every few hours"] -->|"https://demo.sandeeprn.in"| app
+    probe["GitHub Actions probe<br/>every few hours"] -->|"public hostname"| app
     cron["CronJob 03:00 IST<br/>pg_dump"] -->|"instance principal,<br/>write-only"| bucket[("Object Storage<br/>14-day lifecycle")]
 ```
 
 - **SLO (ADR 0008):** over 7 days, 99.5% of redirects are not 5xx, and 95% of
-  the rest finish under 200 ms. Alerts are multi-window burn rates
-  (14.4x and 6x page, 3x and 1x ticket), with a 20-request traffic floor. Rules
-  are unit-tested with promtool in CI and were proven live: a 5-minute
-  database outage fired the fast alert to Discord and resolved it
+  the rest finish under 200 ms. Alerts are multi-window burn rates (14.4x and
+  6x page, 3x and 1x ticket), with a 20-request traffic floor. Rules are
+  unit-tested with promtool in CI
   ([runbook](runbooks/slo-redirect-availability.md)).
+- **Fast-burn alert proven live** (2026-10-25, on OKE): a planned 5-minute
+  database outage began 13:07:11 IST; `RedirectErrorBudgetBurnFast` fired at
+  13:14:39 and resolved by 13:20:57, and Discord got both messages. The client
+  saw 450 requests: 341 x 302, 109 x 503, 0 unanswered.
 - **Readiness stays pod-local (ADR 0016):** a database outage keeps pods in the
   Service answering fast 503s, so every failure is counted by the SLI.
 - **Synthetic probe (ADR 0019):** the blackbox exporter requests an unknown
-  short code on the backend Service every 30 s (a 404 after a Postgres
-  lookup). That gives the SLO steady traffic in quiet periods, and an alert
-  fires when the probe gets no answer at all, which the app's metrics cannot
-  see. A scheduled GitHub Actions job also checks a real short link through
-  the public hostname, but GitHub runs it only every few hours.
-- **Backups (ADR 0007, 0017):** nightly `pg_dump` uploaded by the OCI CLI with
-  instance-principal auth. The nodes may only create and list objects in the
-  bucket; read, overwrite and delete were verified to be denied. Restores use
-  the operator's login; a drill restored identical data
-  ([runbook](runbooks/postgres-backup-restore.md)). `PostgresBackupMissing`
-  alerts after 26 h without a success.
-- **Admin UIs** (ArgoCD, Grafana, Prometheus, Alertmanager) are reachable only
-  by port-forward ([access runbook](runbooks/access.md)).
+  short code on the backend Service every 30 s (a 404 after a Postgres lookup).
+  That gives the SLO steady traffic in quiet periods, and an alert fires when
+  the probe gets no answer at all, which the app's metrics cannot see.
+- **External probe:** a scheduled GitHub Actions job in this repo follows a real
+  short link through the public hostname. GitHub runs it only every few hours.
+  Of 84 runs sampled up to 2026-11-13 10:50 UTC, none failed, including the
+  runs after the DNS switch.
+- **Sized for one node.** Prometheus keeps 8 days or 8 GB, whichever comes
+  first, on a 10Gi `local-path` volume. k3s runs the control plane in one
+  process and has no etcd, so the chart's scheduler, controller-manager,
+  kube-proxy and etcd targets are off; the first three's metrics arrive
+  through the API server's endpoint. Every alert carries the label
+  `cluster=k3s`.
+- **Backups (ADR 0007, 0017):** a nightly `pg_dump`, checked with
+  `pg_restore --list`, then uploaded as
+  `link-shortener/<cluster>/<timestamp>.pgc` with `--no-overwrite`. The upload
+  uses the node's instance principal, which may only create and list objects
+  in the bucket; read, overwrite and delete were verified to be denied (on
+  OKE). `PostgresBackupMissing` alerts after 26 h without a success.
+- **Restore drills** ([runbook](runbooks/postgres-backup-restore.md)):
+  2026-10-25 on OKE into a scratch database (9 rows, identical); 2026-11-12
+  OKE's last backup restored into k3s (34 rows, equal to the dump). A backup
+  written from k3s on 2026-11-12 proved the node's write-only identity.
 
 ## 8. Access model
 
 ```mermaid
 flowchart LR
-    laptop["Laptop"] -->|"oci session authenticate<br/>(~1 h token)"| iam["OCI IAM"]
-    laptop -->|"scripts/oke-tunnel.sh"| sess["Bastion session<br/>throwaway SSH key, TTL ≤ 3 h"]
-    sess --> api["private API :6443"]
-    laptop -->|"kubectl via 127.0.0.1<br/>tls-server-name = API IP"| api
-    api --> argocd["ArgoCD UI via<br/>kubectl port-forward only"]
+    laptop["Laptop"] -->|"SSH 22, key only,<br/>one allowed CIDR"| node["k3s node"]
+    laptop -->|"kubectl to 127.0.0.1:16443<br/>(scripts/k3s-tunnel.sh)"| api["k3s API<br/>127.0.0.1:6443 on the node"]
+    node --- api
+    api --> ui["Admin UIs via<br/>kubectl port-forward only"]
+    laptop -->|"oci session authenticate<br/>(about 1 h token)"| iam["OCI IAM"]
 ```
 
+- **No public Kubernetes API (ADR 0010).** Port 6443 is never open in the
+  security list. `scripts/k3s-tunnel.sh` copies the node's kubeconfig over SSH,
+  points it at `127.0.0.1:16443`, writes it to `~/.kube/k3s.kubeconfig`
+  (outside the repo, mode 600) and holds the SSH tunnel open.
+- **SSH** is key-only, no root login, from one allowed CIDR.
+  `scripts/k3s-verify.sh` checks that SSH accepts keys only and that 6443 and
+  the kubelet port are not reachable ([k3s access runbook](runbooks/k3s-access.md)).
 - **No long-lived cloud keys on disk.** Terraform and the CLI use OCI session
   tokens (`auth = "SecurityToken"`).
-- **The tunnel script** creates a throwaway SSH key and session, writes the
-  kubeconfig outside the repo, and deletes the session on Ctrl+C.
 - **Admin UIs** (ArgoCD, Grafana, Prometheus, Alertmanager) are reachable
   only by port-forward, never exposed (ADR 0014).
-- Step-by-step commands: [access runbook](runbooks/access.md).
+
+The OKE target had a private API endpoint instead, reached through OCI Bastion
+with `scripts/oke-tunnel.sh`: a throwaway SSH key and session (at most 3 h)
+for one client address, deleted on Ctrl+C ([OKE access runbook](runbooks/access.md)).
 
 ## 9. Infrastructure as code
 
-```
-oci-k8s-gitops-demo/
-  scripts/bootstrap-state.sh   one-time: compartment + versioned private state bucket (idempotent)
-  scripts/oke-tunnel.sh        kubectl access to the private OKE API
-  terraform/backend.hcl        generated, git-ignored
-  scripts/a1-wait-and-apply.sh retries the k3s apply until A1 capacity appears
-  terraform/oke/               OKE target: VCN, gateways, subnets, security lists, cluster, node pool, Bastion
-  terraform/shared/            backup bucket, lifecycle rule, write-only IAM (outlives any cluster)
-  terraform/k3s/               k3s node and network (written; waiting for A1 capacity); its network is applied
-```
+Four Terraform roots, each with its own state key, so an apply in one can never
+touch another's resources.
+
+| Root | Holds | Lifecycle |
+|---|---|---|
+| `terraform/k3s` | VCN, internet gateway, public subnet, security list (22 from one CIDR, 80/443, path-MTU ICMP), the A1 instance with cloud-init | Long-lived; `prevent_destroy` on the instance |
+| `terraform/shared` | Backup bucket, 14-day lifecycle rule, dynamic group and write-only policy | Outlives any cluster; `prevent_destroy` on the bucket |
+| `terraform/guardrails` | One tenancy quota policy and one monthly budget with three alert rules (ADR 0021) | Changes on its own schedule; tightened after [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13) |
+| `terraform/oke` | The OKE target: VCN, gateways, subnets, Basic cluster, node pool, Bastion | Tagged `teardown_by=2026-11-15`; destroyed in [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13) |
+
+Scripts in this repo:
+
+| Script | Use |
+|---|---|
+| [`bootstrap-state.sh`](../scripts/bootstrap-state.sh) | One time: compartment and versioned state bucket (idempotent) |
+| [`k3s-tunnel.sh`](../scripts/k3s-tunnel.sh) | kubectl access to the k3s API over SSH |
+| [`k3s-verify.sh`](../scripts/k3s-verify.sh) | Nine checks: no drift, `prevent_destroy`, SSH key-only, API and kubelet closed, first boot finished, node Ready, k3s version, pod DNS and egress |
+| [`verify-public-url.sh`](../scripts/verify-public-url.sh) | Checks the public URL from outside: DNS, redirect, certificate, HSTS, token gate, rate limit |
+| [`a1-wait-and-apply.sh`](../scripts/a1-wait-and-apply.sh) | Polls for A1 capacity and applies `terraform/k3s` when it appears (written for the capacity shortage) |
+| [`oke-tunnel.sh`](../scripts/oke-tunnel.sh) | kubectl access to the OKE target through OCI Bastion |
 
 - **State:** the native `oci` backend, in a versioned Object Storage bucket,
   with locking (ADR 0003).
-- **Proven re-runnable:** `terraform plan` shows no changes after apply, after
-  the LB was created, and on `main`.
-- **Guardrails:** `terraform fmt`, `terraform validate` and gitleaks (with
-  custom OCI rules) run as pre-commit hooks; gitleaks also scans the full
+- **Who applies:** the owner, from a laptop, with a short-lived OCI session
+  token. No CI job holds OCI credentials.
+- **Re-runnable:** `terraform plan` shows no changes after an apply;
+  `k3s-verify.sh` checks this for `terraform/k3s`.
+- **Guardrails on commits:** `terraform fmt`, `terraform validate` and gitleaks
+  (with custom OCI rules) run as pre-commit hooks; gitleaks also scans the full
   history in CI in all three repos, because `--no-verify` skips hooks.
 
 ## 10. Security summary
 
 | Area | Control |
 |---|---|
-| Secrets in Git | gitleaks with OCI rules, as a pre-commit hook and as a full-history CI job in every repo. tfvars, state, backend.hcl and kubeconfig are git-ignored. Outputs holding OCIDs or IPs are marked sensitive. Only SealedSecrets may be committed, and CI rejects plain `Secret` manifests |
-| Supply chain | Actions pinned by SHA; checksum-verified tool downloads; Trivy gate before push; pinned dependency versions |
+| Secrets in Git | gitleaks with OCI rules, as a pre-commit hook and as a full-history CI job in every repo. tfvars, state, backend.hcl and kubeconfig are git-ignored. Outputs holding OCIDs or IPs are marked sensitive. Only SealedSecrets may be committed, and CI rejects plain `Secret` manifests. Even the node's public IP is sealed |
+| Change control | Every repo needs a PR and linear history on `main`; required checks `test` (app) and `validate` (gitops) |
+| Supply chain | Actions pinned by SHA; checksum-verified tool downloads; Trivy gate before push; pinned versions of charts, ArgoCD, Sealed Secrets and k3s |
 | Runtime | Non-root UID 10001, read-only root filesystem, all capabilities dropped, seccomp `RuntimeDefault`, no service-account token mounted |
 | Database | The backend uses its own non-superuser role that owns only its table; the superuser is kept for the server, backups and the role-setup Job (ADR 0018) |
-| Network | Private workers and API; Bastion allowlisted to one /32; public exposure only through the LB on 80/443 |
-| Cloud auth | Short-lived session tokens; a dedicated compartment. In-cluster access to OCI is node identity with a write-only policy on one bucket (ADR 0017) |
-| Cost | Budget with 50% and 100% actual-spend alerts; an A1 guardrail in Terraform; teardown date tagged on every resource |
+| Network | The k3s node has a public IP in a public subnet. Its security list allows 22 from one CIDR, 80/443 and path-MTU ICMP; nothing else. The API is reached by SSH tunnel only. The host firewall is open, so the security list is the single gate (ADR 0012) |
+| Cloud auth | Short-lived session tokens; a dedicated compartment. In-cluster access to OCI is the node's identity with a write-only policy on one bucket (ADR 0017). The legacy instance metadata endpoint is disabled |
+| Cost | One tenancy quota policy as the hard cap (compute zeroed except A1 2 OCPU / 12 GB; E5 and extra block storage allowed only until the OKE teardown) and one monthly budget (SGD 7) with three alert rules: actual spend above SGD 1, actual at 100%, forecast at 100% (ADR 0021). A budget only alerts, up to a day late |
 
-## 11. Planned: the long-lived Always Free target
+## 11. History: the OKE target and the move to k3s
 
-The design the live demo will run on (ADR 0001, 0002, 0004, 0005, 0006, 0007,
-0008, 0012, 0013, 0020). It is blocked on A1 capacity: from 2026-10-22 the
-home region (one availability domain) reported no capacity for A1 at 2/12,
-1/6 and 1/4, nor for E2.1.Micro. The edge part was built on OKE first
-(ADR 0020, section 6) and carries over.
+### The OKE target
 
-```mermaid
-flowchart LR
-    user(("Internet")) --> cf["Cloudflare DNS<br/>demo.sandeeprn.in (DNS only, external-dns)"]
-    cf --> nlb["OCI NLB<br/>TCP passthrough 80/443"]
-    nlb --> traefik["Traefik (k3s ServiceLB)"]
-    subgraph node["1 × A1 VM, 2 OCPU / 12 GB, Ubuntu 24.04 aarch64, k3s"]
-      traefik --> backend["link-shortener ×2"]
-      backend --> pg[("PostgreSQL StatefulSet")]
-      certm["cert-manager (DNS-01)"]
-      sealed["Sealed Secrets"]
-      prom["kube-prometheus-stack<br/>7-day SLO, burn-rate alerts"]
-    end
-    pg -->|"nightly pg_dump"| os[("Object Storage")]
-    prom -->|"alerts"| discord["Discord"]
-    probe["GitHub Actions external probe"] --> cf
-```
+A short-lived second deploy target paid by the trial credit (ADR 0015). It
+was created on 2026-10-22, when no A1 capacity was available, and proved that
+the same GitOps repo runs on a managed, multi-node cluster.
 
-There is no node-level high availability: a single node cannot honour a PDB
-during a drain. The README will say so plainly. The OKE target demonstrates the
-multi-node behaviour instead ([drain evidence](evidence/oke-drain-2026-10-24.md)).
+| Aspect | Choice |
+|---|---|
+| Cluster | OKE Basic (free control plane), Kubernetes v1.36.4 |
+| Nodes | 2 x `VM.Standard.E5.Flex`, 1 OCPU / 8 GB, one per fault domain (the region has one availability domain) |
+| API | Private endpoint only, through OCI Bastion |
+| Edge | Free OCI Network Load Balancer (TCP passthrough) to Traefik x2, upstream chart (ADR 0020) |
+| Rate limit | A shared flood guard, 5/s burst 10, because the load balancer hid client IPs; proxy protocol ([#97](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/97)) was never done |
+
+It served `https://demo.sandeeprn.in`, with a production certificate since
+2026-10-31, until the DNS switch on 2026-11-12. What it proved:
+
+- **Node drain, 2026-10-24:** 370 requests, 0 failures; the PDB blocked the
+  eviction of the last pod ([evidence](evidence/oke-drain-2026-10-24.md)).
+- **Drain and PDB refusal, 2026-11-08:** 1264 requests, 0 failures; the
+  drained node held one of the two Traefik pods.
+- **Rollout under traffic, 2026-11-08:** about 7 minutes from merge to live,
+  514 requests, 0 failures.
+- **Scan gate:** Trivy blocked a real finding (`zlib1g`) before push.
+- **Fast burn-rate alert,** 2026-10-25 (section 7).
+
+Evidence and videos: [oke-final-2026-11-10.md](evidence/oke-final-2026-11-10.md);
+[node drain, PDB refusal, restore](https://youtu.be/ypoLkJUmsCI) (2:00) and
+[rollout under traffic](https://youtu.be/_CFu4mpSBlg) (1:45). These multi-node
+proofs cannot be repeated on the single k3s node.
+
+**Cost:** SGD 45.69 from 2026-10-22 to 2026-11-06, about SGD 3.05 a day, all
+compute. The trial credit is USD 300 (SGD 400 in the account), ending about
+2026-11-19.
+
+The OKE target served the site until 2026-11-12. It still exists with no
+public way in; its teardown is issue
+[#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13) (due
+2026-11-15).
+
+### The move to k3s
+
+- **2026-11-03:** decision to upgrade to Pay As You Go with guardrails and move
+  the demo to k3s.
+- **2026-11-10:** guardrails applied and proven to block a launch
+  ([ADR 0021](adr/0021-pay-as-you-go-with-guardrails.md),
+  [runbook](runbooks/cost-guardrails.md)).
+- **2026-11-11:** Pay As You Go; the A1 node was created and k3s was Ready. The
+  client-IP test decided the edge without a load balancer
+  ([ADR 0022](adr/0022-moving-the-demo-from-oke-to-k3s.md)).
+- **2026-11-12, bootstrap** ([runbook](runbooks/k3s-bootstrap.md)): the sealing
+  keys restored, then ArgoCD and `root-k3s`. 10 Applications were Synced and
+  Healthy 3.5 minutes after the root was applied. The production certificate
+  was issued on the first order. OKE's last backup was restored (34 rows).
+- **2026-11-12 22:10 UTC, DNS switch:** merging
+  [gitops PR #59](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-gitops/pull/59)
+  removed OKE's Ingress. OKE's external-dns deleted its record and k3s's
+  created its own; the record was absent for 25 seconds.
+
+Still open: the OKE teardown and the quota tightening after it
+([#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)), and the
+rebuild proof on the same VM
+([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57)).
 
 ## 12. Decision index
 
-| ADR | Decision |
-|---|---|
-| [0001](adr/0001-single-node-k3s-on-always-free-a1.md) | Single-node k3s on one Always Free A1 instance |
-| [0002](adr/0002-ubuntu-2404-aarch64-node-os.md) | Ubuntu 24.04 (aarch64) as the node OS |
-| [0003](adr/0003-terraform-state-in-object-storage.md) | Terraform state in Object Storage (native `oci` backend) |
-| [0004](adr/0004-nlb-tls-passthrough-to-traefik.md) | NLB with TLS passthrough to Traefik |
-| [0005](adr/0005-cert-manager-cloudflare-dns01.md) | cert-manager with Cloudflare DNS-01 |
-| [0006](adr/0006-sealed-secrets.md) | Sealed Secrets for secrets in Git |
-| [0007](adr/0007-postgres-statefulset-with-dump-backups.md) | PostgreSQL StatefulSet with nightly dump backups |
-| [0008](adr/0008-observability-and-slo.md) | kube-prometheus-stack and a redirect SLO |
-| [0009](adr/0009-ci-commits-image-tag-to-gitops-repo.md) | CI opens an auto-merging tag-bump PR |
-| [0010](adr/0010-node-access-ssh-tunnel.md) | No public Kubernetes API |
-| [0011](adr/0011-workflow-and-scope.md) | PR workflow; core vs stretch scope |
-| [0012](adr/0012-node-firewall-and-cloud-init.md) | Node firewall handled in cloud-init |
-| [0013](adr/0013-dns-and-reserved-ip.md) | Reserved public IP and Terraform-managed DNS (amended by 0020) |
-| [0014](adr/0014-admin-ui-access.md) | Admin UIs only through port-forward |
-| [0015](adr/0015-oke-ephemeral-second-target.md) | OKE as a short-lived second deploy target |
-| [0016](adr/0016-readiness-checks-pod-local-state-only.md) | Readiness checks pod-local state only, not the shared database |
-| [0017](adr/0017-backup-auth-instance-principals-write-only.md) | Backups use instance principals with a write-only policy |
-| [0018](adr/0018-app-database-role-least-privilege.md) | The backend connects with its own non-superuser database role |
-| [0019](adr/0019-in-cluster-synthetic-redirect-probe.md) | An in-cluster synthetic probe feeds the redirect SLO |
-| [0020](adr/0020-tls-and-public-hostname-on-oke.md) | TLS and the public hostname on OKE, with token-gated link creation |
+All 22 decisions are listed in the [ADR index](adr/README.md). Start with these:
+
+- [0016](adr/0016-readiness-checks-pod-local-state-only.md): readiness checks
+  only pod-local state, so a database outage gives fast 503s that the SLO counts.
+- [0022](adr/0022-moving-the-demo-from-oke-to-k3s.md): the move to k3s, with an
+  edge without a load balancer that still sees client IPs.
+- [0021](adr/0021-pay-as-you-go-with-guardrails.md): Pay As You Go, with a quota
+  policy as the cap and a budget as the alarm.
+- [0009](adr/0009-ci-commits-image-tag-to-gitops-repo.md): CI opens an
+  auto-merging tag-bump PR, so every deploy is a merged PR.
+- [0017](adr/0017-backup-auth-instance-principals-write-only.md): backups use
+  the node's identity with a write-only policy.
+- [0019](adr/0019-in-cluster-synthetic-redirect-probe.md): an in-cluster
+  synthetic probe feeds the redirect SLO.

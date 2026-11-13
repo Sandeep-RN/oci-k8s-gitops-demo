@@ -1,6 +1,6 @@
 # 0019. An in-cluster synthetic probe feeds the redirect SLO
 
-Status: Accepted (2026-10-27)
+Status: Accepted (2026-10-27). Amends ADR 0008 (the external probe becomes the slow outside check) and ADR 0016 (where the steady traffic comes from).
 
 ## Context
 ADR 0008 planned an external probe, a scheduled GitHub Actions job hitting a short link "every few minutes", to cover two gaps in the app's own metrics:

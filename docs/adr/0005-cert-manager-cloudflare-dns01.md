@@ -1,6 +1,6 @@
 # 0005. cert-manager with Cloudflare DNS-01 at demo.sandeeprn.in
 
-Status: Accepted (2026-10-21, revised 2026-10-21 after review)
+Status: Accepted (2026-10-21, revised 2026-10-21 after review). Amended by ADR 0020 (external-dns keeps the DNS record, not Terraform; cert-manager and external-dns each have their own Cloudflare token).
 
 ## Context
 A clickable live demo with real HTTPS is worth far more than screenshots. DNS for sandeeprn.in is managed at Cloudflare.

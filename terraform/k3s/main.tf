@@ -65,8 +65,8 @@ resource "oci_core_instance" "node" {
 
   lifecycle {
     # A1 capacity is scarce; an instance that is destroyed may never come back
-    # (ADR 0001). To lift this on purpose (the one-time rebuild proof), edit it
-    # in a reviewed PR.
+    # (ADR 0001). The rebuild proof (#57) reinstalls k3s on this same VM and
+    # never destroys it (ADR 0022), so this stays on.
     prevent_destroy = true
 
     # Oracle publishes new image builds regularly. Without this, a newer image

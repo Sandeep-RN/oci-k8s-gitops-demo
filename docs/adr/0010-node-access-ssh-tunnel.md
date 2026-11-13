@@ -1,6 +1,6 @@
 # 0010. Node access over SSH, no public Kubernetes API
 
-Status: Accepted (2026-10-21)
+Status: Accepted (2026-10-21). Amended by ADR 0022 (on k3s the node's own ports 80 and 443 are public; no load balancer sits in front). The OKE target reached its private API through OCI Bastion instead (`terraform/oke`).
 
 ## Context
 The repos are public and the node has a public IP. An open SSH or Kubernetes API port invites scanning.

@@ -1,6 +1,6 @@
 # 0001. Single-node k3s on one Always Free A1 instance
 
-Status: Accepted (2026-10-21, revised 2026-10-21 after review). Amended by ADR 0022 (the rebuild proof keeps the VM).
+Status: Accepted (2026-10-21, revised 2026-10-21 after review). Amended by ADR 0022 (the rebuild proof keeps the VM; k3s has no NLB, so only the instance has `prevent_destroy`). The node was created on 2026-11-11, after the Pay As You Go upgrade (ADR 0021). The HPA mentioned below was not built (first in ADR 0011's cut order).
 
 ## Context
 Oracle's Always Free tier allows 2 OCPU / 12 GB of Ampere A1 in total. If more than that is held when the $300 trial ends, all A1 instances are disabled and later deleted, not only the excess. Oracle's Always Free documentation ([freetier.htm](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier.htm)) words it as: "disabled and then deleted after 30 days, unless you upgrade to a paid account". The docs do not say when those 30 days start (at trial end, or when the over-limit usage is detected), so this ADR assumes the worst case: no grace period can be relied on. A1 capacity is often unavailable ("out of host capacity"), so an instance that is destroyed may not be obtainable again.

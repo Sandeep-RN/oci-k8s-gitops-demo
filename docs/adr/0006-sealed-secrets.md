@@ -1,6 +1,6 @@
 # 0006. Sealed Secrets for secrets in Git
 
-Status: Accepted (2026-10-21, revised 2026-10-21 after review)
+Status: Accepted (2026-10-21, revised 2026-10-21 after review). On k3s the keys are the OKE keys, restored from the offline backup (ADR 0022).
 
 ## Context
 The gitops repo is public and ArgoCD syncs it, so secrets must be committed in encrypted form or kept out of band.

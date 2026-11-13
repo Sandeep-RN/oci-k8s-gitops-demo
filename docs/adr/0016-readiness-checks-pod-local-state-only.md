@@ -1,6 +1,6 @@
 # 0016. Readiness checks pod-local state only, not the shared database
 
-Status: Accepted (2026-10-25)
+Status: Accepted (2026-10-25). Amended by ADR 0019 (the steady traffic now comes from the in-cluster probe, not from the GitHub Actions probe).
 
 ## Context
 `/readyz` returned 503 while Postgres was unreachable, so Kubernetes took the pod out of the Service until the database was back (the fail-fast work in #26 kept this). A live outage test (#53) showed what that does when every replica shares the database:
