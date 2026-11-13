@@ -2,6 +2,12 @@
 
 ADR 0021. Root: `terraform/guardrails`. Issue: #113.
 
+> **Status:** steps 1 to 4 were done on 2026-11-10 and 2026-11-11 (guardrails
+> applied and proven, Pay As You Go upgrade, next-day check). Step 5 (tighten
+> the quotas) waits for the OKE teardown
+> ([#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)). The
+> steps below are the record of what was done.
+
 The quota policy is the cap: a create request over a quota is refused. The
 budget is only an alarm: an email, evaluated about once every 24 hours, which
 stops nothing. Do the steps in order. **Do not upgrade to Pay As You Go until
