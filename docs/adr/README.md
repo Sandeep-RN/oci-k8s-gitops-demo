@@ -27,6 +27,7 @@ One record per decision. A record is not rewritten when things change: the statu
 | [0021](0021-pay-as-you-go-with-guardrails.md) | Pay As You Go, with a tenancy quota policy as the cap and a budget as the alarm | Accepted | |
 | [0022](0022-moving-the-demo-from-oke-to-k3s.md) | Moving to k3s: edge with no load balancer, real client IPs, reused sealing key, data moved, rebuild on the same VM | Accepted | |
 | [0023](0023-argocd-app-of-apps-with-prune-and-self-heal.md) | ArgoCD, one app-of-apps root per cluster, automated sync with prune and self-heal (recorded later) | Accepted | |
+| [0024](0024-secret-scanning-in-layers.md) | Secret scanning in layers: gitleaks hook, full-history gitleaks in CI, GitHub push protection; custom OCI rules (recorded later) | Accepted | |
 
 ## Where to start
 
