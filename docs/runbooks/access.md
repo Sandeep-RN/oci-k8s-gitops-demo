@@ -67,9 +67,13 @@ House rules (ArgoCD owns the cluster):
 
 - **No `kubectl apply`, `edit` or `scale`.** Change the gitops repo instead;
   ArgoCD reverts manual changes (self-heal).
-- **No `kubectl rollout restart`.** It adds an annotation that Git doesn't
-  have, so the app shows OutOfSync. To restart, delete a pod:
-  `$K -n link-shortener delete pod <pod>`; the Deployment replaces it.
+- **No `kubectl rollout restart`** (nor the Restart action in the ArgoCD UI,
+  which writes the same annotation). It adds a `restartedAt` annotation that
+  Git doesn't have. Whether ArgoCD then shows OutOfSync depends on how it
+  diffs that resource; in one drill it did, and self-heal could not clear it
+  ([sealed-secrets](sealed-secrets.md), gotcha 2). To restart, delete a pod:
+  `$K -n link-shortener delete pod <pod>`; the Deployment replaces it and no
+  spec changes.
 - `get`, `describe`, `logs` and `port-forward` are fine. Do not `drain` the
   node: it is the only one, so its pods have nowhere to go.
 
