@@ -54,6 +54,7 @@ be pasted into an issue. Exit code 1 if any check failed.
 | pod-dns-internet | a throwaway pod resolves cluster DNS and reaches the internet, then is deleted |
 
 The A1 retry script has an offline test: `scripts/tests/a1-wait-and-apply.test.sh`.
+CI runs it on every pull request (`.github/workflows/checks.yml`).
 
 ## When something fails
 
