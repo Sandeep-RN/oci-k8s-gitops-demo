@@ -6,9 +6,9 @@
 # deliberate review. Dependabot's default 3-day cooldown for new releases applies.
 #
 # Dependabot-triggered workflow runs get a read-only GITHUB_TOKEN and no regular
-# Actions secrets. The only workflow that runs on pull requests here is
-# gitleaks.yml, which needs neither. (probe.yml uses secrets but runs only on a
-# schedule and by hand.)
+# Actions secrets. The workflows that run on pull requests here, gitleaks.yml
+# and checks.yml (Terraform fmt/validate/test, shellcheck), need neither.
+# (probe.yml uses secrets but runs only on a schedule and by hand.)
 #
 # "Dependabot security updates" is a separate repo setting and is not enabled by
 # this file.
