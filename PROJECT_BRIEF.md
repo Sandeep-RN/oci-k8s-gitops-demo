@@ -41,9 +41,10 @@ node drain under live traffic (1264 requests, 0 failed) and a rollout under
 traffic (514 requests, 0 failed, about 7 minutes from merge to live). Free
 capacity only arrived after I upgraded the account, which I did only after a
 quota policy was in place as a hard spending cap and proven to refuse a launch.
-I then moved the live site to a single-node k3s cluster through one pull
-request: the DNS record was absent for 25 seconds and all 34 database rows
-came across. The whole stack came up from Git in 3.5 minutes.
+I then rebuilt the stack on a single-node k3s cluster from Git (every
+application healthy 3.5 minutes after the root was applied), restored all 34
+database rows from backup, and made the cutover with one pull request: the DNS
+record was absent for 25 seconds.
 
 ## Status
 
@@ -62,9 +63,9 @@ with no public way in; its teardown is issue
 | Period | 2026-10-20 to 2026-11-13 for the build; two open items below |
 | Repos (public) | [infrastructure and docs](https://github.com/Sandeep-RN/oci-k8s-gitops-demo), [application and CI](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-app), [Kubernetes manifests](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-gitops) |
 | Live URL | <https://demo.sandeeprn.in> (landing page with a working short link; API page at `/docs`) |
-| Cloud | Oracle Cloud Infrastructure. One Always Free Ampere A1 VM: 2 OCPU, 12 GB, arm64, Ubuntu 24.04 |
+| Cloud | Oracle Cloud Infrastructure. One Always Free Ampere A1 VM: 2 OCPU, 12 GB, arm64, Ubuntu 24.04. (Oracle's [Always Free page](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm) gives 1,500 OCPU hours and 9,000 GB hours a month, "equivalent to 2 OCPUs and 12 GB of memory"; checked 2026-11-13) |
 | Kubernetes | k3s v1.36 on one node (today). OKE, two nodes, for the multi-node tests (2026-10-22 to 2026-11-12) |
-| Size of the work | 125 merged pull requests, 22 ADRs, 8 runbooks, 3 evidence write-ups |
+| Size of the work | 125 merged pull requests (11 of them automated image-tag bumps), 22 ADRs, 8 runbooks, 3 evidence write-ups |
 | Cost | Target $0 a month. The OKE target cost about SGD 3.05 a day, paid from trial credit |
 | Built with | An AI coding assistant, Claude Code. See "How it was built" |
 
@@ -91,12 +92,12 @@ Every row has a source. The README has the same table; keep the two equal.
 | A change, from merge to running in the cluster | About 7 minutes, no manual step | [evidence 2026-11-08](docs/evidence/oke-final-2026-11-10.md) |
 | Rollout under live traffic | 514 requests, 0 failed | same |
 | Node drain under live traffic (two nodes) | 1264 requests, 0 failed. The disruption budget refused the drain that would have taken the last pod | same |
-| SLO alert on a real outage | A planned 5-minute database outage paged Discord 7.5 minutes after it began, then resolved | [#53](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/53) |
-| A whole cluster from Git | 10 ArgoCD Applications Synced and Healthy 3.5 minutes after one `kubectl apply` on a new node | [evidence 2026-11-12](docs/evidence/k3s-bootstrap-2026-11-12.md) |
-| Moving the live site to another cluster | By pull request. DNS record absent for 25 seconds. All 34 rows restored | same |
+| SLO alert on a real outage | A planned 5-minute database outage fired the critical alert to Discord 7.5 minutes after it began; it then resolved | [#53](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/53) |
+| A whole cluster from Git | On a new node, 10 ArgoCD Applications were Synced and Healthy 3.5 minutes after the root Application was applied (after the key restore and the ArgoCD install) | [evidence 2026-11-12](docs/evidence/k3s-bootstrap-2026-11-12.md) |
+| Moving the live site to another cluster | The cutover was one pull request. DNS record absent for 25 seconds. All 34 rows restored | same |
 | Backup and restore | Nightly dumps. Restored twice: a drill on 2026-10-25, and for real in the move on 2026-11-12 | [runbook](docs/runbooks/postgres-backup-restore.md) |
 | Image scan gate | Blocked a real HIGH CVE before the image was pushed | [evidence 2026-11-08](docs/evidence/oke-final-2026-11-10.md) |
-| Rate limit per client | One client's burst of 600 requests got 282 answers of 429 | [#115](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/115) |
+| Rate limit per client | One client's burst of 600 requests got 282 answers of 429. That Traefik sees each client's own address was measured with a packet capture. Not run: the check that a second client still gets 200 during the burst | [#115](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/115), [ADR 0022](docs/adr/0022-moving-the-demo-from-oke-to-k3s.md) |
 | Spend cap | A launch outside the allowed shapes was refused by the quota policy | [ADR 0021](docs/adr/0021-pay-as-you-go-with-guardrails.md), [#113](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/113) |
 
 How to quote these honestly:
@@ -107,6 +108,15 @@ How to quote these honestly:
   that planned disruptions lose no requests. They are not load tests.
 - The SLO is 99.5% of redirects over 7 days. It is a target with alerts. It is
   **not** a measured uptime figure, so never write "99.5% uptime".
+- **25 seconds** is how long the DNS record was absent. It is not a downtime
+  figure: a resolver could keep the old address for up to 5 minutes, and what
+  users saw was not measured. Before the one pull request came a key restore,
+  two manual applies and a data restore (about 35 minutes).
+- In the alert test the page arrived **after** the 5-minute outage had ended
+  (outage 13:07:11 to 13:12:49, page 13:14:39). Say "paged 7.5 minutes after
+  the outage began", never "detected the outage in real time".
+- "Paged" means a message in a Discord channel. There is no pager and no
+  on-call rota.
 
 ## The story
 
@@ -210,13 +220,13 @@ Pick three to five. Do not merge two bullets into one bigger claim.
   merge reaches the cluster in about 7 minutes with no manual step and no
   cluster credentials outside the cluster.
 - Defined a 7-day availability SLO with multi-window burn-rate alerts
-  (Prometheus, Alertmanager) and proved the paging alert with a planned
+  (Prometheus, Alertmanager) and proved the critical alert with a planned
   outage; found and fixed a readiness-probe design that hid errors from the
   SLO.
 - Moved a live service between Kubernetes clusters (two-node OKE to
-  single-node k3s) through a reviewed pull request: DNS record absent for 25
-  seconds, every database row restored from backup, the full stack synced from
-  Git in 3.5 minutes.
+  single-node k3s): the new cluster synced from Git in 3.5 minutes, every
+  database row was restored from backup, and the cutover was one reviewed pull
+  request with the DNS record absent for 25 seconds.
 - Showed that planned disruptions lose no requests on a two-node cluster: a
   node drain (1264 requests) and a rollout (514 requests) under live traffic,
   0 failed, using PodDisruptionBudgets and topology spread.
@@ -241,9 +251,10 @@ github: "https://github.com/Sandeep-RN/oci-k8s-gitops-demo"
 
 **Two sentences.** I built and operate a small public service on Kubernetes
 the way I would want a production one run: delivered only through Git, with an
-SLO that pages, backups that were restored, and every decision written down.
-It runs on one free Oracle Cloud VM, and I moved it there from a two-node
-cluster through one pull request, with 25 seconds without a DNS record.
+SLO that alerts, backups that were restored, and every decision written down.
+It runs on one free Oracle Cloud VM. I moved it there from a two-node cluster,
+and the cutover was one pull request with the DNS record absent for 25
+seconds.
 
 **Profile line.** Kubernetes GitOps platform on OCI's free tier: ArgoCD,
 Terraform, an SLO with burn-rate alerts, tested backups. Live at
@@ -256,8 +267,8 @@ ArgoCD deploys it: about 7 minutes from merge to live. The service has HTTPS
 with automatic certificates, a 7-day availability SLO with burn-rate alerts
 that I proved with a planned outage, and nightly backups I have restored
 twice. On a two-node cluster I drained a node under live traffic with no
-failed request. I then moved the live site to a single free VM through one
-pull request. 22 decisions and 8 runbooks are in the repo.
+failed request. I then moved the live site to a single free VM; the cutover
+was one pull request. 22 decisions and 8 runbooks are in the repo.
 
 ### Diagram in plain ASCII
 

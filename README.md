@@ -62,17 +62,18 @@ The full picture, with the reasons, is in
 | A change, from merge to running in the cluster | About 7 minutes, no manual step | [evidence](docs/evidence/oke-final-2026-11-10.md) |
 | Rollout under live traffic | 514 requests, 0 failed | [evidence](docs/evidence/oke-final-2026-11-10.md), [video](https://youtu.be/_CFu4mpSBlg) |
 | Node drain under live traffic | 1264 requests, 0 failed. The disruption budget refused the drain that would have taken the last pod | [evidence](docs/evidence/oke-final-2026-11-10.md), [video](https://youtu.be/ypoLkJUmsCI) |
-| SLO alert on a real outage | A planned 5-minute database outage paged Discord 7.5 minutes after it began, then resolved | [#53](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/53) |
-| A whole cluster from Git | On a new k3s node, all 10 ArgoCD Applications were Synced and Healthy 3.5 minutes after one `kubectl apply` | [evidence](docs/evidence/k3s-bootstrap-2026-11-12.md) |
-| Moving the live site to another cluster | DNS switched by a pull request. The record was absent for 25 seconds. All 34 rows restored | [evidence](docs/evidence/k3s-bootstrap-2026-11-12.md) |
+| SLO alert on a real outage | A planned 5-minute database outage fired the critical alert to Discord 7.5 minutes after it began; it then resolved | [#53](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/53) |
+| A whole cluster from Git | On a new k3s node, all 10 ArgoCD Applications were Synced and Healthy 3.5 minutes after the root Application was applied (after the key restore and the ArgoCD install) | [evidence](docs/evidence/k3s-bootstrap-2026-11-12.md) |
+| Moving the live site to another cluster | The cutover was one pull request. The DNS record was absent for 25 seconds. All 34 rows restored | [evidence](docs/evidence/k3s-bootstrap-2026-11-12.md) |
 | Backup and restore | Nightly dumps. Restore drilled on 2026-10-25 and done for real in the move on 2026-11-12 | [runbook](docs/runbooks/postgres-backup-restore.md) |
 | Image scan gate | Blocked a real HIGH CVE before the image was pushed | [evidence](docs/evidence/oke-final-2026-11-10.md) |
-| Rate limit per client | One client's burst of 600 requests got 282 answers of 429 | [#115](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/115) |
+| Rate limit per client | One client's burst of 600 requests got 282 answers of 429. Not run yet: the check that a second client still gets 200 during the burst | [#115](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/115) |
 | Spend cap | A launch outside the allowed shapes was refused by the quota policy, before the account became Pay As You Go | [ADR 0021](docs/adr/0021-pay-as-you-go-with-guardrails.md), [#113](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/113) |
 
 The drain, rollout and alert tests ran on the two-node OKE target, because one
-node cannot show a drain. Each evidence page ends with what the test does not
-show.
+node cannot show a drain. They ran at under one request a second: they show
+that planned disruptions lose no requests, and they are not load tests. Each
+evidence page ends with what the test does not show.
 
 ## Decisions I would defend
 
