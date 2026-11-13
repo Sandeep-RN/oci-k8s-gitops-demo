@@ -27,9 +27,18 @@ variable "ssh_allowed_cidr" {
   description = "CIDR allowed to reach SSH (your public IP as /32). Update it if your IP changes (ADR 0010)."
   type        = string
 
+  # SSH is the only admin path to the node, so a wide range must fail at plan
+  # time. cidrhost() rejects malformed input (bad octets, IPv6 is excluded by
+  # the regex); the regex then requires four dotted octets and a prefix of
+  # /24 to /32. A regex rather than tonumber(split(...)): && does not
+  # short-circuit in Terraform, so tonumber() on garbage would raise an error
+  # instead of failing validation cleanly.
   validation {
-    condition     = can(cidrhost(var.ssh_allowed_cidr, 0)) && var.ssh_allowed_cidr != "0.0.0.0/0"
-    error_message = "ssh_allowed_cidr must be a valid CIDR and not 0.0.0.0/0 (ADR 0010)."
+    condition = (
+      can(cidrhost(var.ssh_allowed_cidr, 0)) &&
+      can(regex("^[0-9]{1,3}(\\.[0-9]{1,3}){3}/(2[4-9]|3[0-2])$", var.ssh_allowed_cidr))
+    )
+    error_message = "ssh_allowed_cidr must be an IPv4 CIDR with a prefix of /24 to /32 (ADR 0010), for example 203.0.113.10/32. Use your own public IP as /32; a wider range opens SSH to others."
   }
 }
 
