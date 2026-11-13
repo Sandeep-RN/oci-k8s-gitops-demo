@@ -36,7 +36,8 @@ manual applies: the ArgoCD install, and the cluster root
 | Steps 1 to 6 in total | About 35 minutes, most of it the key restore |
 
 The `link-shortener` Application needs CRDs that the monitoring app installs.
-It has no sync wave on purpose and retries instead; one retry was enough.
+It can sync before those CRDs exist (a sync wave would not make ArgoCD wait for
+them; see step 4 of the bootstrap runbook), so it retries; one retry was enough.
 
 ## 2. The edge before DNS moved
 
