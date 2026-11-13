@@ -96,4 +96,9 @@ run_case refuses-non-additive 1 0 "not purely additive" "Plan: 1 to add, 1 to ch
 run_case retries-then-succeeds 0 2 "SUCCESS: node created" "$ADD" "capacity ok"
 run_case no-changes-exits 0 0 "nothing to do" "No changes. Your infrastructure matches the configuration." ""
 
-[ "$FAILED" -eq 0 ] && echo "all cases passed" || { echo "$FAILED case(s) failed"; exit 1; }
+if [ "$FAILED" -eq 0 ]; then
+  echo "all cases passed"
+else
+  echo "$FAILED case(s) failed"
+  exit 1
+fi
