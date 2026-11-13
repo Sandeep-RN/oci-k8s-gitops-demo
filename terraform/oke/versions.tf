@@ -1,5 +1,6 @@
 terraform {
-  required_version = ">= 1.6.0"
+  # 1.12.0 is the first release with the native `oci` backend used below.
+  required_version = ">= 1.12.0"
 
   required_providers {
     oci = {
