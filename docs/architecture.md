@@ -372,6 +372,10 @@ Scripts in this repo:
 - **Guardrails on commits:** `terraform fmt`, `terraform validate` and gitleaks
   (with custom OCI rules) run as pre-commit hooks; gitleaks also scans the full
   history in CI in all three repos, because `--no-verify` skips hooks.
+- **Checks in CI, with no credentials:** the `checks` workflow runs `fmt`,
+  `validate` and `terraform test` for every root on Terraform 1.12.0 (the
+  minimum) and the latest release, with the lock file read-only; shellcheck
+  on every script; and the offline test of the A1 retry script.
 
 ## 10. Security summary
 

@@ -81,6 +81,8 @@ fi
 
 SSH_OPTS=(-i "$SSH_KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o LogLevel=ERROR
   -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15)
+# Callers pass the remote command as fixed strings written in this script.
+# shellcheck disable=SC2029
 node_ssh() { ssh "${SSH_OPTS[@]}" "${NODE_USER}@${NODE_IP}" "$@"; }
 kc() { kubectl --kubeconfig "$KCFG" --request-timeout=20s "$@"; }
 
@@ -188,7 +190,8 @@ check_k3s_version() {
 
 check_pod_dns_internet() {
   [ "$TUNNEL_OK" -eq 1 ] || { skip pod-dns-internet "no tunnel"; return; }
-  local pod="verify-net-$(date +%s)" out
+  local pod out
+  pod="verify-net-$(date +%s)"
   # Cleanup runs whatever happens, so a failed check leaves no pod behind.
   out="$(kc run "$pod" --image="$TEST_IMAGE" --restart=Never --rm -i --quiet \
     --pod-running-timeout=120s --command -- sh -c \

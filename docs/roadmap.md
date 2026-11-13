@@ -41,9 +41,9 @@ would take them. None is started.
    ArgoCD Application file would delete its namespace, and the database's
    volume claim with it. Marking the Namespace so ArgoCD never deletes it
    closes that path.
-3. CI for this repo: `terraform fmt` and `validate` for the four roots,
-   shellcheck, and the script test that exists but never runs. Today only the
-   pre-commit hook checks them.
+3. Done: CI for this repo (`.github/workflows/checks.yml`, issue #3) runs
+   `terraform fmt`, `validate` and `test` for the four roots, shellcheck, and
+   the offline script test.
 4. Make the app's CI build every commit on `main`. With three merges in quick
    succession, the change filter can skip the middle one.
 5. Automated dependency updates for charts, images, Actions and providers. Pin

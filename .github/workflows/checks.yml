@@ -1,0 +1,105 @@
+name: checks
+
+# Offline checks for the Terraform roots and the shell scripts (ADR 0011: CI
+# is required; issue #3). No secrets and no cloud access: `init
+# -backend=false` never reads state, and `validate` and `test` call no
+# provider API (tests use mocked providers). A stranger's fork runs the same
+# checks.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  # Cancel a superseded run on a PR branch; never cancel a run on main.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  terraform:
+    name: terraform (${{ matrix.root }}, ${{ matrix.version }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        # oke: delete this entry together with terraform/oke after the
+        # teardown (#13), or the job fails on a missing folder.
+        root: [shared, k3s, guardrails, oke]
+        # 1.12.0 is the floor in versions.tf (first release with the native
+        # oci backend); running it proves the floor. "latest" shows
+        # deprecations and breaking changes before a laptop upgrade does.
+        version: ["1.12.0", "latest"]
+    defaults:
+      run:
+        working-directory: terraform/${{ matrix.root }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ matrix.version }}
+          # The wrapper rewrites output and exit codes; plain terraform is clearer.
+          terraform_wrapper: false
+
+      - name: fmt
+        run: terraform fmt -check -diff -recursive
+
+      - name: init (no backend, lock file read-only)
+        # -lockfile=readonly fails if the committed lock file lacks this
+        # platform's hash, instead of silently rewriting it (#154).
+        run: terraform init -backend=false -input=false -lockfile=readonly
+
+      - name: validate
+        run: terraform validate -no-color
+
+      - name: test
+        # Only roots that have a tests/ folder. Tests must supply every
+        # variable themselves: there is no tfvars file in CI.
+        run: |
+          if [ -d tests ]; then
+            terraform test -no-color
+          else
+            echo "no tests/ folder in this root"
+          fi
+
+  shellcheck:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      SHELLCHECK_VERSION: 0.11.0
+      # sha256 of shellcheck-v<version>.linux.x86_64.tar.gz: the asset digest
+      # GitHub shows on the release page.
+      SHELLCHECK_SHA256: b7af85e41cc99489dcc21d66c6d5f3685138f06d34651e6d34b42ec6d54fe6f6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Pinned and checksum-verified, not the runner's preinstalled copy, so a
+      # runner image update cannot change the result on its own.
+      - name: Install shellcheck (checksum verified)
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/sc.tgz" "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.gz"
+          echo "${SHELLCHECK_SHA256}  $RUNNER_TEMP/sc.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/sc.tgz" -C "$RUNNER_TEMP"
+
+      - name: shellcheck every tracked script
+        run: git ls-files -z '*.sh' | xargs -0 "$RUNNER_TEMP/shellcheck-v${SHELLCHECK_VERSION}/shellcheck"
+
+  script-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Stubs replace terraform, the OCI CLI and sleep: no cloud calls.
+      - name: a1-wait-and-apply offline test
+        run: bash scripts/tests/a1-wait-and-apply.test.sh

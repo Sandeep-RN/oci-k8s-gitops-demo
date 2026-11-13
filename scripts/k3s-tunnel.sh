@@ -94,6 +94,8 @@ trap 'rm -f "$TMP_CFG"' EXIT
 chmod 600 "$TMP_CFG" 2>/dev/null || true
 
 log "fetching the kubeconfig from the node over SSH"
+# The path is meant to expand here, on the laptop: it is a fixed path we choose.
+# shellcheck disable=SC2029
 ssh "${SSH_OPTS[@]}" "${NODE_USER}@${NODE_IP}" "sudo -n cat $REMOTE_KUBECONFIG" >"$TMP_CFG" \
   || die "could not read $REMOTE_KUBECONFIG (SSH blocked, k3s not installed, or no passwordless sudo)"
 

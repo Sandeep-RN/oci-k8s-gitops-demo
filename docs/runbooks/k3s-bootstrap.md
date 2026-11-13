@@ -378,7 +378,7 @@ its own 22:13:25, so the record was absent for 25 seconds. The record's TTL is
 ## 8. Check the public URL
 
 ```bash
-scripts/verify-public-url.sh --production --hsts --code seYOHlz
+scripts/verify-public-url.sh --production --code seYOHlz
 ```
 
 Without a token the script cannot create a link, so `--code` gives it an
@@ -391,7 +391,7 @@ read with a hidden prompt and never printed:
 
 ```bash
 read -rsp "link token (your owner token): " OWNER_LINK_TOKEN; echo; echo "length: ${#OWNER_LINK_TOKEN} (0 = nothing was read)"
-LINK_TOKEN="$OWNER_LINK_TOKEN" scripts/verify-public-url.sh --production --hsts --no-burst
+LINK_TOKEN="$OWNER_LINK_TOKEN" scripts/verify-public-url.sh --production --no-burst
 unset OWNER_LINK_TOKEN
 # 9 passed, 0 failed, 2 skipped
 ```

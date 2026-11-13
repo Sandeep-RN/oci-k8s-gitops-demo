@@ -1,0 +1,73 @@
+# Dependabot version updates (demo #161). Reference:
+# https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference
+#
+# Every ecosystem: weekly, Monday morning IST, minor and patch updates batched
+# into one PR per ecosystem, major updates as their own PRs so each gets a
+# deliberate review. Dependabot's default 3-day cooldown for new releases applies.
+#
+# Dependabot-triggered workflow runs get a read-only GITHUB_TOKEN and no regular
+# Actions secrets. The workflows that run on pull requests here, gitleaks.yml
+# and checks.yml (Terraform fmt/validate/test, shellcheck), need neither.
+# (probe.yml uses secrets but runs only on a schedule and by hand.)
+#
+# "Dependabot security updates" is a separate repo setting and is not enabled by
+# this file.
+version: 2
+updates:
+  # Actions are pinned by commit SHA with a version comment on the same line
+  # (`uses: owner/repo@<sha> # v1.2.3`). Dependabot updates both the SHA and
+  # that comment.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "CI"
+    groups:
+      actions-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # Provider (oracle/oci) and module versions. One entry for three roots, so the
+  # same dependency is updated in all of them in a single PR and the three lock
+  # files cannot drift apart. terraform/oke is left out on purpose: issue #13
+  # destroys it before 2026-11-15. Add it back only if that plan changes.
+  - package-ecosystem: "terraform"
+    directories:
+      - "/terraform/shared"
+      - "/terraform/k3s"
+      - "/terraform/guardrails"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "Terraform"
+    groups:
+      terraform-minor-patch:
+        group-by: "dependency-name"
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # Hook revisions in .pre-commit-config.yaml (gitleaks, pre-commit-terraform).
+  # Listed as a supported ecosystem in GitHub's docs, with no beta label.
+  - package-ecosystem: "pre-commit"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "Hooks"
+    groups:
+      pre-commit-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
