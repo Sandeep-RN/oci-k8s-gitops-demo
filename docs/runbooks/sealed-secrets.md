@@ -184,10 +184,13 @@ keys must never be in Git, so ArgoCD cannot restore them.
    wait until it is Ready, and then check or delete.
 2. **Do not use `kubectl rollout restart` on ArgoCD-managed workloads.** It
    writes a `kubectl.kubernetes.io/restartedAt` annotation into the
-   Deployment. That is drift, and ArgoCD self-heal does not remove it, because
-   its apply only prunes fields it set itself, so the app stays OutOfSync.
-   Delete the pod instead, which changes no spec. If it already happened,
-   remove the annotation:
+   Deployment, a change that Git does not have. In this drill ArgoCD flagged
+   it, and self-heal did not remove it (its apply only prunes fields it set
+   itself), so the app stayed OutOfSync until the annotation was removed.
+   ArgoCD does not flag every field that is missing from Git, so the outcome
+   can differ on another resource; deleting the pod changes no spec and is
+   safe either way. The Restart action in the ArgoCD UI writes the same
+   annotation. If it already happened, remove the annotation:
    `$K -n kube-system patch deploy sealed-secrets-controller --type=json -p '[{"op":"remove","path":"/spec/template/metadata/annotations/kubectl.kubernetes.io~1restartedAt"}]'`
 
 ## Drill record (2026-10-24, OKE)

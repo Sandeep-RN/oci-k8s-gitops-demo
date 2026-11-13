@@ -23,7 +23,7 @@ list:
 - `$K -n kube-system get pods -l helmcharts.helm.cattle.io/chart=traefik` (step B)
 - `$K -n cert-manager logs deploy/cert-manager --tail=100` (certificate)
 - `KUBECONFIG=$HOME/.kube/k3s.kubeconfig cmctl renew demo-sandeeprn-in-tls -n link-shortener` (certificate, token rotation)
-- `$K -n external-dns rollout restart deploy/external-dns` (token rotation)
+- `$K -n external-dns delete pod -l app.kubernetes.io/name=external-dns` (token rotation)
 - the three layer checks in step 5 of "Add a link-creation token" (ArgoCD revision, Secret keys, files in each backend pod)
 
 ## Facts
@@ -204,8 +204,10 @@ Do one component at a time, so a mistake affects one.
    wait for `validate`, merge. ArgoCD syncs the new SealedSecret and the
    controller updates the Secret.
 4. **external-dns only:** it reads the token as an environment variable, which
-   a running pod does not refresh. Restart it:
-   `$K -n external-dns rollout restart deploy/external-dns`. cert-manager reads
+   a running pod does not refresh. Restart it by deleting its pod (not
+   `rollout restart`; see the house rules in [access](access.md)):
+   `$K -n external-dns delete pod -l app.kubernetes.io/name=external-dns`.
+   The Deployment starts a new pod with the new token. cert-manager reads
    its Secret on each challenge and needs no restart.
 5. Prove the new token works:
    - cert-manager: `KUBECONFIG=$HOME/.kube/k3s.kubeconfig cmctl renew demo-sandeeprn-in-tls -n link-shortener`, then
