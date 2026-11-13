@@ -16,7 +16,7 @@ command below was run as written.
 | Rotation | The controller adds a new key every 30 days and keeps the old ones, so older SealedSecrets still decrypt. **Back up again after each renewal.** |
 | Public cert | `argocd/clusters/<cluster>/sealed-secrets-cert.pem` in the gitops repo; encrypt-only, safe to publish |
 | Backup location | The owner's password manager. **Never** a repo, chat, ticket or screenshot |
-| Scope | Keys are per cluster. The k3s cluster will have its own keys and its own backup |
+| Scope | Keys are per cluster by default. For the move from OKE, **k3s uses the OKE keys** (restored on 2026-11-12, ADR 0022), so one backup covers both clusters. Do not delete it at the OKE teardown: it is the k3s key now |
 
 All commands assume a working `kubectl` context (on OKE: `scripts/oke-tunnel.sh`,
 then `K="kubectl --kubeconfig ~/.kube/oke-demo.kubeconfig"`).
@@ -47,12 +47,38 @@ EOF
 
 ## Back up the keys
 
+Export only the fields a restore needs. `get secret -o yaml` is not enough on
+a cluster where the keys were restored with `kubectl apply`: apply adds a
+`kubectl.kubernetes.io/last-applied-configuration` annotation that holds the
+private key a second time, plus `resourceVersion` and `uid`. On 2026-11-12 that
+backup was 14 KB and the password manager refused it (limit: 10,000 characters
+per note, about 7 KB of plain text). The minimal export below was 6.8 KB for one
+key, and restores cleanly on another cluster (server-side dry run and apply
+both passed):
+
 ```bash
-$K -n kube-system get secret -l sealedsecrets.bitnami.com/sealed-secrets-key -o yaml \
-  > sealed-secrets-keys-<cluster>-$(date +%Y%m%d).yaml
-chmod 600 sealed-secrets-keys-*.yaml
-grep -c '^- apiVersion: v1' sealed-secrets-keys-*.yaml   # number of keys; compare with the cluster
+F=sealed-secrets-keys-<cluster>-$(date +%Y%m%d)-min.yaml
+$K -n kube-system get secret -l sealedsecrets.bitnami.com/sealed-secrets-key -o go-template='{{range .items}}---
+apiVersion: v1
+kind: Secret
+type: {{.type}}
+metadata:
+  name: {{.metadata.name}}
+  namespace: kube-system
+  labels:
+    sealedsecrets.bitnami.com/sealed-secrets-key: {{index .metadata.labels "sealedsecrets.bitnami.com/sealed-secrets-key"}}
+data:
+  tls.crt: {{index .data "tls.crt"}}
+  tls.key: {{index .data "tls.key"}}
+{{end}}' > "$F"
+chmod 600 "$F"
+echo "bytes: $(wc -c < "$F")  keys: $(grep -c '^kind: Secret' "$F")  last-applied: $(grep -c last-applied "$F")"
+# keys = the number on the cluster; last-applied = 0; bytes must stay under about 7300 per note
 ```
+
+The file grows by about 6.8 KB per key, so one password-manager note holds one
+key. After the first 30-day renewal there are two keys: store the file as an
+attachment, or one note per key.
 
 1. Write the file **outside every repo**.
 2. Store it in the password manager as a secure note or attachment, named with the cluster and date.
@@ -81,8 +107,14 @@ Verify:
 $K get sealedsecrets -A \
   -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,SYNCED:'.status.conditions[?(@.type=="Synced")].status'
 # every row: True
-kubeseal --fetch-cert | diff - argocd/clusters/<cluster>/sealed-secrets-cert.pem && echo "cert matches"
+kubeseal --fetch-cert | tr -d '\r' | diff - <(tr -d '\r' < argocd/clusters/<cluster>/sealed-secrets-cert.pem) && echo "cert matches"
 ```
+
+(`tr -d '\r'`: a Windows checkout has CRLF line endings, and a plain `diff`
+then reports a difference that is not there.) On a cluster that restored the
+keys with `apply` in the same session, `get secret` shows one key, with the
+`last-applied-configuration` annotation; this is harmless, and the minimal
+export above never includes it.
 
 Restoring keys is a deliberate exception to "no manual kubectl apply": the
 keys must never be in Git, so ArgoCD cannot restore them.
