@@ -4,8 +4,22 @@ ADR 0006. Git holds only ciphertext. **The controller's private sealing keys
 are the real secrets.** Lose them and every SealedSecret in Git becomes
 unreadable; leak them and every one of them can be decrypted.
 
-Tested end to end on the OKE target on 2026-10-24 (controller v0.40.0). Every
-command below was run as written.
+Tested end to end on the OKE target on 2026-10-24 (controller v0.40.0, drill
+record below), every command run as written there. The restore was done again
+on k3s on 2026-11-12 with the minimal export, when the OKE keys were moved to
+k3s (ADR 0022): the restore commands below are the ones run then (step 2 of
+[k3s-bootstrap](k3s-bootstrap.md)).
+
+## Not yet run on k3s in this form
+
+Only the kubeconfig or the certificate path changed for these. Run each once
+on k3s and remove it from this list:
+
+- the minimal export in "Back up the keys" (it ran on OKE on 2026-11-12, and its file was restored on k3s)
+- the seal example with `--cert argocd/clusters/k3s/sealed-secrets-cert.pem` (the file is identical to the OKE one it ran with)
+- `kubeseal --kubeconfig ~/.kube/k3s.kubeconfig --fetch-cert > argocd/clusters/k3s/sealed-secrets-cert.pem` (after a key renewal)
+- `$K -n kube-system delete secret <generated-key-name>`, `$K -n kube-system delete pod -l name=sealed-secrets-controller` and the `wait` after it (restore, only when the controller already ran without the keys)
+- the `patch` that removes a `restartedAt` annotation (gotcha 2)
 
 ## Facts
 
@@ -16,17 +30,24 @@ command below was run as written.
 | Rotation | The controller adds a new key every 30 days and keeps the old ones, so older SealedSecrets still decrypt. **Back up again after each renewal.** |
 | Public cert | `argocd/clusters/<cluster>/sealed-secrets-cert.pem` in the gitops repo; encrypt-only, safe to publish |
 | Backup location | The owner's password manager. **Never** a repo, chat, ticket or screenshot |
-| Scope | Keys are per cluster by default. For the move from OKE, **k3s uses the OKE keys** (restored on 2026-11-12, ADR 0022), so one backup covers both clusters. Do not delete it at the OKE teardown: it is the k3s key now |
+| Scope | **One set of keys for this project** (ADR 0022): the OKE keys were restored on k3s on 2026-11-12, so the same sealed files decrypt on both clusters and one backup covers both. Do not delete it at the OKE teardown: it is the k3s key now |
 
-All commands assume a working `kubectl` context (on OKE: `scripts/oke-tunnel.sh`,
-then `K="kubectl --kubeconfig ~/.kube/oke-demo.kubeconfig"`).
+All commands assume the k3s tunnel is running (`scripts/k3s-tunnel.sh`, see
+[k3s-access](k3s-access.md)) and use:
+
+```bash
+K="kubectl --kubeconfig $HOME/.kube/k3s.kubeconfig"     # k3s, NOT the OKE kubeconfig
+```
+
+kubectl's default context on the laptop is a different cluster, so every
+command names the k3s kubeconfig.
 
 ## Seal a secret (no plaintext on disk)
 
 Generate values inside a pipe so they never reach shell history, argv or a file:
 
 ```bash
-python - <<'EOF' | kubeseal --cert argocd/clusters/oke/sealed-secrets-cert.pem \
+python - <<'EOF' | kubeseal --cert argocd/clusters/k3s/sealed-secrets-cert.pem \
                             --format yaml --scope strict > NAME-sealedsecret.yaml
 import json, secrets
 print(json.dumps({
@@ -42,8 +63,11 @@ EOF
   be copied elsewhere and decrypted.
 - Files must end in `-sealedsecret.yaml`. The gitops `.gitignore` blocks
   `*-secret.yaml`, and the `validate` check rejects plain `kind: Secret`.
-- After a key renewal, refresh the committed cert: `kubeseal --fetch-cert >
-  argocd/clusters/<cluster>/sealed-secrets-cert.pem`.
+- After a key renewal, refresh the committed cert:
+  `kubeseal --kubeconfig ~/.kube/k3s.kubeconfig --fetch-cert > argocd/clusters/k3s/sealed-secrets-cert.pem`.
+  The gitops seal scripts (`scripts/seal-link-tokens.sh`,
+  `scripts/seal-cloudflare-token.sh`) still read the identical copy in
+  `argocd/clusters/oke/`, so refresh both files while both exist.
 
 ## Back up the keys
 
@@ -88,15 +112,42 @@ Repeat after every 30-day renewal, and before any cluster rebuild.
 
 ## Restore (disaster recovery or cluster rebuild)
 
-On a rebuilt cluster, restore the keys **before** syncing SealedSecrets, or
-restart the controller afterwards. Either works.
+This is the one restore procedure for the project. [k3s-bootstrap](k3s-bootstrap.md)
+step 2 links here and keeps the record of the run on k3s on 2026-11-12.
+
+Restore the keys **before ArgoCD syncs anything** (before `root.yaml`, step 3
+of the bootstrap). `root.yaml` syncs the controller together with every
+SealedSecret; a controller that starts without the old keys creates a new one,
+and every sealed file then fails to decrypt (ADR 0006).
+
+**The owner runs every command that reads or applies the key file**, in a
+directory outside every repo. Anyone helping checks only outcomes: the number
+of key Secrets, their names, and the public certificate.
 
 ```bash
-$K apply -f sealed-secrets-keys-<cluster>-<date>.yaml          # key Secrets
-# Optional: remove a key the new controller generated, to return to the original key set.
+F=sealed-secrets-keys-<cluster>-<date>-min.yaml          # the file from the password manager, outside every repo
+[ "$($K get nodes -o jsonpath='{.items[*].metadata.name}')" = "k3s-node-vnic" ] && echo "cluster: k3s OK" \
+  && $K apply --dry-run=server -f "$F" \
+  && $K apply -f "$F"
 $K -n kube-system get secret -l sealedsecrets.bitnami.com/sealed-secrets-key
+```
+
+The `&&` chain applies nothing unless the node check (the right cluster) and
+the server-side dry run pass. A pasted block does not stop on a failed line by
+itself.
+
+Check: the number of key Secrets equals the number in the file
+(`grep -c '^kind: Secret' "$F"`), with the same names. Then delete the local
+file (`rm -f "$F"`).
+
+**If the controller already ran without the keys** (it made a key of its own,
+and SealedSecrets show `Synced=False`, "no key could decrypt"): apply the keys
+as above, then remove the generated key and restart the controller. Restart by
+deleting the pod, NOT `rollout restart` (see gotcha 2):
+
+```bash
+$K -n kube-system get secret -l sealedsecrets.bitnami.com/sealed-secrets-key   # the extra name is the generated key
 $K -n kube-system delete secret <generated-key-name>
-# Restart by deleting the pod, NOT `rollout restart` (see gotcha 2).
 $K -n kube-system delete pod -l name=sealed-secrets-controller
 $K -n kube-system wait --for=condition=Ready pod -l name=sealed-secrets-controller --timeout=180s
 ```
@@ -107,7 +158,11 @@ Verify:
 $K get sealedsecrets -A \
   -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,SYNCED:'.status.conditions[?(@.type=="Synced")].status'
 # every row: True
-kubeseal --fetch-cert | tr -d '\r' | diff - <(tr -d '\r' < argocd/clusters/<cluster>/sealed-secrets-cert.pem) && echo "cert matches"
+$K -n kube-system get secret -l sealedsecrets.bitnami.com/sealed-secrets-key --no-headers | wc -l
+# the same number as in the file: the controller made no key of its own
+# From the gitops repo's main checkout:
+kubeseal --kubeconfig ~/.kube/k3s.kubeconfig --fetch-cert | tr -d '\r' \
+  | diff - <(tr -d '\r' < argocd/clusters/k3s/sealed-secrets-cert.pem) && echo "cert matches"
 ```
 
 (`tr -d '\r'`: a Windows checkout has CRLF line endings, and a plain `diff`
@@ -133,7 +188,7 @@ keys must never be in Git, so ArgoCD cannot restore them.
    its apply only prunes fields it set itself, so the app stays OutOfSync.
    Delete the pod instead, which changes no spec. If it already happened,
    remove the annotation:
-   `kubectl -n kube-system patch deploy sealed-secrets-controller --type=json -p '[{"op":"remove","path":"/spec/template/metadata/annotations/kubectl.kubernetes.io~1restartedAt"}]'`
+   `$K -n kube-system patch deploy sealed-secrets-controller --type=json -p '[{"op":"remove","path":"/spec/template/metadata/annotations/kubectl.kubernetes.io~1restartedAt"}]'`
 
 ## Drill record (2026-10-24, OKE)
 

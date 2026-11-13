@@ -1,46 +1,81 @@
 # Runbook: the edge (certificate, Cloudflare tokens, link-creation tokens)
 
-ADR 0020. Covers everything between the internet and the backend Service for
-`https://demo.sandeeprn.in`: how to debug it, renew its certificate, rotate a
+ADR 0020, ADR 0022. Covers everything between the internet and the backend
+Service for `https://demo.sandeeprn.in`, which the single-node k3s cluster
+serves since 2026-11-12: how to debug it, renew its certificate, rotate a
 Cloudflare token, and add or revoke a link-creation token. The design is in
-[architecture.md](../architecture.md#6-edge-built-on-oke).
+[architecture.md](../architecture.md#6-edge).
 
 All changes are pull requests to the gitops repo (ArgoCD syncs about 3 minutes
 after a merge). Read-only checks use `kubectl` through the tunnel; do not
 `kubectl apply` anything by hand.
 
+## Not yet run on k3s in this form
+
+These commands come from the OKE version of this page, with the k3s
+kubeconfig and namespace (the Helm job check comes from the comment in the
+gitops repo's `argocd/clusters/k3s/apps/traefik-config.yaml`). Run each once
+on k3s, check the output matches what this page says, and remove it from this
+list:
+
+- `$K -n external-dns logs deploy/external-dns --tail=50` (step A) and `--tail=20` (token rotation)
+- `$K -n kube-system get pods -o wide` and `$K -n kube-system logs <traefik-pod> --tail=50` (step B)
+- `$K -n kube-system get pods -l helmcharts.helm.cattle.io/chart=traefik` (step B)
+- `$K -n cert-manager logs deploy/cert-manager --tail=100` (certificate)
+- `KUBECONFIG=$HOME/.kube/k3s.kubeconfig cmctl renew demo-sandeeprn-in-tls -n link-shortener` (certificate, token rotation)
+- `$K -n external-dns rollout restart deploy/external-dns` (token rotation)
+- the three layer checks in step 5 of "Add a link-creation token" (ArgoCD revision, Secret keys, files in each backend pod)
+
 ## Facts
 
 | | |
 |---|---|
-| Hostname | `demo.sandeeprn.in`, A record kept by external-dns (DNS only, not proxied), plus a TXT owner record `edns-...` |
-| Entry | OCI Network Load Balancer (TCP passthrough) to Traefik, 2 replicas, namespace `traefik` |
+| Hostname | `demo.sandeeprn.in`, A record kept by k3s's external-dns (owner id `oci-demo-k3s`; DNS only, not proxied), plus a TXT owner record `edns-...` |
+| Entry | No load balancer (ADR 0022). The node's public IP, then k3s's bundled Traefik through ServiceLB: one Traefik pod, namespace `kube-system`, Service `traefik` with `externalTrafficPolicy: Local`, so Traefik sees real client IPs. Configured from `edge/traefik-k3s` in the gitops repo (Application `traefik-config`) |
+| Address in DNS | Traefik writes the node's public IP into the Ingress status from the SealedSecret `traefik-public-ip`; external-dns publishes that address |
 | Certificate | cert-manager `Certificate` made from the Ingress `backend` (namespace `link-shortener`), Secret `demo-sandeeprn-in-tls`, issuer `letsencrypt-production`; renews itself 30 days before expiry |
 | HSTS | `max-age=15552000` (180 days) on this host only. Browsers that saw it refuse plain HTTP **and refuse any bad certificate with no click-through** |
-| Cloudflare tokens | Two, one per component: `cert-manager-oke` (cert-manager) and `external-dns oci-demo` (external-dns); each Zone:DNS:Edit + Zone:Zone:Read on `sandeeprn.in` only. Values live in the owner's password manager |
+| Cloudflare tokens | Two, one per component: `cert-manager-oke` (cert-manager) and `external-dns oci-demo` (external-dns); each Zone:DNS:Edit + Zone:Zone:Read on `sandeeprn.in` only. The names are from the OKE days: the same two sealed tokens (`platform/cert-manager-issuers` and `platform/external-dns` in the gitops repo) serve k3s now. Values live in the owner's password manager |
 | Link tokens | Keys of one SealedSecret, `link-tokens` (namespace `link-shortener`), mounted as one file per token. Current names: `owner`, `k6` |
-| Tools | `kubectl` via `scripts/oke-tunnel.sh` (see [access](access.md)), `kubeseal`, `openssl`, `gh`; optional `cmctl` |
+| Tools | `kubectl` via `scripts/k3s-tunnel.sh` (see [k3s-access](k3s-access.md) and [access](access.md)), `kubeseal`, `openssl`, `gh`; optional `cmctl` |
 
 ```bash
-# After scripts/oke-tunnel.sh is running in another terminal:
-K="kubectl --kubeconfig $HOME/.kube/oke-demo.kubeconfig --request-timeout=60s"
+# After scripts/k3s-tunnel.sh is running in another terminal:
+K="kubectl --kubeconfig $HOME/.kube/k3s.kubeconfig"     # k3s, NOT the OKE kubeconfig
 ```
 
-The tunnel is slow; the timeout avoids false failures.
+The laptop's default kubectl context is a different cluster, so every command
+here names the k3s kubeconfig.
 
 ## Check the whole edge in one go
 
+Run from the demo repo checkout, as in step 8 of
+[k3s-bootstrap](k3s-bootstrap.md). Without a token, give the script an
+existing short code to test the redirect with (`seYOHlz` is the landing page's
+example link); the line "Create with a valid token gets 201" then FAILS with
+"LINK_TOKEN is not set", and everything else must pass:
+
 ```bash
-LINK_TOKEN=... scripts/verify-public-url.sh --production --hsts --cutover
+scripts/verify-public-url.sh --production --hsts --code seYOHlz
 ```
 
-Run it from the demo repo checkout. It checks DNS, the redirect to HTTPS, the
-trusted certificate chain, HSTS, 401 without a token, a link created with
-`LINK_TOKEN` and followed, the rate limit, and that no LoadBalancer Service is
-left for the app. It prints no addresses. Take the token from the password
-manager; do not paste it into a command line (the script reads the
-environment). The rate-limit check sends a burst of 600 requests, so the site answers 429
-for a few seconds; do not run it during a load test.
+With the owner token (it creates one real link). The token is read with a
+hidden prompt and never printed:
+
+```bash
+read -rsp "link token (your owner token): " OWNER_LINK_TOKEN; echo; echo "length: ${#OWNER_LINK_TOKEN} (0 = nothing was read)"
+LINK_TOKEN="$OWNER_LINK_TOKEN" scripts/verify-public-url.sh --production --hsts --no-burst
+unset OWNER_LINK_TOKEN
+# 9 passed, 0 failed, 2 skipped
+```
+
+It checks DNS, the redirect to HTTPS, the trusted certificate chain, HSTS, 401
+without a token, a link created with `LINK_TOKEN` and followed, and the rate
+limit. It prints no addresses. Do not paste the token into a command line (the
+script reads the environment). The rate-limit check sends a burst of 600
+requests, so your own address gets 429 for a few seconds; do not run it during
+a load test. The script's `--cutover` flag checked the 2026-10-31 OKE cutover
+and reads the OKE kubeconfig by default: do not use it on k3s.
 
 ## Debug: the site does not answer or the certificate is wrong
 
@@ -49,51 +84,72 @@ Go from the outside in and stop at the first broken layer.
 | Step | Check | Healthy | If not |
 |---|---|---|---|
 | 1. DNS | `nslookup demo.sandeeprn.in 1.1.1.1` | One public A record | No record or a private (10.x) address: look at external-dns logs, step A |
-| 2. TCP | `curl -sv --connect-timeout 5 https://demo.sandeeprn.in/healthz -o /dev/null` | Connects, TLS handshake completes | Connect timeout: NLB or Traefik, step B |
+| 2. TCP | `curl -sv --connect-timeout 5 https://demo.sandeeprn.in/healthz -o /dev/null` | Connects, TLS handshake completes | Connect timeout: the node's security list or Traefik, step B |
 | 3. Certificate | `echo \| openssl s_client -connect demo.sandeeprn.in:443 -servername demo.sandeeprn.in 2>/dev/null \| openssl x509 -noout -issuer -enddate` | Issuer is Let's Encrypt (not "TRAEFIK DEFAULT CERT"), `notAfter` more than 30 days away | Step C |
 | 4. Routing | `curl -s -o /dev/null -w '%{http_code}\n' https://demo.sandeeprn.in/healthz` | `200` | `404` from Traefik: the Ingress is missing. `429`: rate limit (below). `502/503`: backend pods, see the [SLO runbook](slo-redirect-availability.md) |
 
-Rate limit: on OKE it is shared by all clients (the NLB hides client addresses,
-issue #97), 5 requests a second with a burst of 10. A busy loop on your own
-laptop can lock everyone out for a few seconds. On k3s it is per client
-(Traefik keeps the client address, ADR 0022): 20 requests a second with a
-burst of 40, so a busy loop locks out only that address. Either way it is a
-429, not an outage.
+Rate limit: per client on k3s. Traefik sees the real client address
+(`externalTrafficPolicy: Local`, ADR 0022), and each address gets 20 requests
+a second with a burst of 40, so a busy loop locks out only that address. A
+429 is not an outage. Proven: a burst of 600 requests from one client got
+282 x 429. Not run yet: the check that a second client still gets 200 during
+that burst. (On OKE the limit was a shared flood guard of 5 requests a second
+with a burst of 10, because the load balancer hid client addresses, #97.)
 
 **A. external-dns** (record missing, stale or wrong):
 
 ```bash
+$K -n external-dns logs deploy/external-dns --since=10m | grep -E 'action=' | sed -E 's/ zone=[0-9a-f]+//'
 $K -n external-dns logs deploy/external-dns --tail=50
 ```
 
-Look for `CREATE`/`UPDATE`/`DELETE` lines for `demo.sandeeprn.in`, and for
-Cloudflare errors (`403`/`401` means the token: see "Rotate a Cloudflare
-token"). It publishes only the NLB's public address; private addresses are
-filtered on purpose. Never change `txtOwnerId` or `txtPrefix`: the existing
-records would stop being owned and would neither update nor delete.
+The first command shows only `CREATE`/`UPDATE`/`DELETE` lines, with the
+Cloudflare zone id removed; nothing printed means no change was needed. The
+second shows everything, including Cloudflare errors (`403`/`401` means the
+token: see "Rotate a Cloudflare token"). Raw logs contain the zone id and IP
+addresses: never paste them anywhere public.
 
-**B. NLB and Traefik**:
+external-dns publishes the address in the Ingress status, which Traefik
+writes from the SealedSecret `traefik-public-ip`; private addresses are
+filtered on purpose. To check that the Ingress address is the node's public
+IP without printing either, use the "Traefik edge checks" in step 4 of
+[k3s-bootstrap](k3s-bootstrap.md). Never change `txtOwnerId` or `txtPrefix`:
+the existing records would stop being owned and would neither update nor
+delete.
+
+**B. The node and Traefik**:
 
 ```bash
-$K -n traefik get pods,svc -o wide     # 2 pods Running, one per node; Service has an EXTERNAL-IP
-$K -n traefik logs -l app.kubernetes.io/name=traefik --tail=50
+$K -n kube-system get svc traefik -o jsonpath='{.spec.externalTrafficPolicy}{"\n"}'   # Local
+$K -n kube-system get pods -o wide              # find the Traefik pod: Running, no restarts piling up
+$K -n kube-system logs <traefik-pod> --tail=50
+$K -n kube-system get pods -l helmcharts.helm.cattle.io/chart=traefik   # k3s's Helm job for Traefik
 ```
 
-A Service stuck at `<pending>` means the cloud controller could not create the
-NLB (look at `$K -n traefik describe svc`). Do not set `is-preserve-source`: with
-`externalTrafficPolicy: Cluster` it makes requests fail.
+Traefik is installed by k3s itself (HelmChart `traefik` in `kube-system`), and
+ArgoCD only applies the `HelmChartConfig` from `edge/traefik-k3s`. The
+`traefik-config` Application shows Synced and Healthy as soon as that object
+is applied, even if k3s's Helm job rejected the values: the Helm job's pod
+shows whether it did.
+
+The Traefik Service's own status shows the node's private IP; only the
+Ingress status carries the public one. If the connection times out, check the
+node's security list: `terraform plan` in `terraform/k3s` must show no changes
+(`web_allowed_cidr` may have been narrowed). More causes and fixes are in the
+"When something fails" table of [k3s-bootstrap](k3s-bootstrap.md).
 
 **C. Certificate**: see the next section.
 
 ## Renew or debug the certificate
 
 cert-manager renews by itself 30 days before expiry. Normally nothing to do.
-The first production certificate was issued 2026-10-31 (valid 90 days);
-`Renewal Time` in `describe` shows when the next renewal is due.
+k3s ordered its own production certificate on 2026-11-12 (valid 90 days). Do
+not take the renewal date from any document: read it from the Certificate's
+status (`Renewal Time` in `describe`).
 
 ```bash
-$K -n link-shortener get certificate,certificaterequest,order,challenge
-$K -n link-shortener describe certificate demo-sandeeprn-in-tls
+$K get certificate,order -A            # certificate READY True, order valid
+$K -n link-shortener describe certificate,certificaterequest,order,challenge
 ```
 
 Reading the output:
@@ -109,8 +165,11 @@ Reading the output:
 next retry):
 
 ```bash
-cmctl renew demo-sandeeprn-in-tls -n link-shortener
+KUBECONFIG=$HOME/.kube/k3s.kubeconfig cmctl renew demo-sandeeprn-in-tls -n link-shortener
 ```
+
+`cmctl` does not use `$K`; without `KUBECONFIG` it would act on the laptop's
+default context, which is another cluster.
 
 `cmctl renew` issues a new certificate and keeps serving the old one until the
 new one is ready. **Do not delete the TLS Secret instead.** Traefik would fall
@@ -120,7 +179,9 @@ that time.
 
 **Experiment safely:** to test issuance changes, use the `letsencrypt-staging`
 issuer on a throwaway host, never on `demo.sandeeprn.in`. Staging has far
-higher limits but its certificates are not trusted.
+higher limits but its certificates are not trusted. The gitops CI rejects any
+issuer but `letsencrypt-production` on an Ingress, so such a test needs that
+rule changed first.
 
 After any change, run the verify script above.
 
@@ -133,7 +194,9 @@ Do one component at a time, so a mistake affects one.
    it for the component and date. Save the value in the password manager. Leave
    the old token active for now.
 2. In a gitops repo worktree on a new branch, seal it (hidden prompt, nothing
-   in shell history):
+   in shell history). The script writes to `platform/`, which both clusters
+   read, and seals with `argocd/clusters/oke/sealed-secrets-cert.pem`, the
+   same certificate as k3s's (one set of keys, ADR 0022):
    ```bash
    scripts/seal-cloudflare-token.sh cert-manager     # or: external-dns
    ```
@@ -145,7 +208,7 @@ Do one component at a time, so a mistake affects one.
    `$K -n external-dns rollout restart deploy/external-dns`. cert-manager reads
    its Secret on each challenge and needs no restart.
 5. Prove the new token works:
-   - cert-manager: `cmctl renew demo-sandeeprn-in-tls -n link-shortener`, then
+   - cert-manager: `KUBECONFIG=$HOME/.kube/k3s.kubeconfig cmctl renew demo-sandeeprn-in-tls -n link-shortener`, then
      watch the `Certificate` become `READY=True`.
    - external-dns: `$K -n external-dns logs deploy/external-dns --tail=20` shows
      no Cloudflare errors after the restart (it re-checks every minute).
@@ -153,6 +216,16 @@ Do one component at a time, so a mistake affects one.
    one is still there to go back to.
 
 ## Add a link-creation token
+
+> **Do not use this procedure on the live site yet.** Step 3 runs
+> `scripts/seal-link-tokens.sh` (gitops repo), which still writes to
+> `apps/link-shortener/overlays/oke` and seals with the OKE certificate path.
+> The live cluster (k3s) reads `apps/link-shortener/overlays/k3s`, so this
+> procedure would change only the OKE copy, and the new token would not work
+> on the site. Use it only after the script points at `overlays/k3s` (tracked
+> in [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)). The
+> steps are kept because they were followed live on OKE on 2026-10-31 and
+> their checks still apply.
 
 For a new tester or job. Tokens are named; the name is stored with each link
 (`created_by`) and logged, the value never is.
@@ -207,8 +280,18 @@ For a new tester or job. Tokens are named; the name is stored with each link
 
 ## Revoke a link-creation token
 
+> **Do not use this procedure on the live site yet.** It was written for and
+> followed on OKE (2026-10-31), where the hand edit below and
+> `scripts/seal-link-tokens.sh` used the same overlay. The script still writes
+> to `apps/link-shortener/overlays/oke` with the OKE certificate path, while
+> the live cluster (k3s) reads `overlays/k3s`, so a rotation (revoke, then add)
+> would change only the OKE copy. Use it only after the script points at
+> `overlays/k3s` (tracked in
+> [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)). The
+> hand edit in step 1 names the k3s file, and has not been run on k3s.
+
 1. On a new branch from the latest `origin/main` (as in step 3 above), open
-   `apps/link-shortener/overlays/oke/link-tokens-sealedsecret.yaml` and delete
+   `apps/link-shortener/overlays/k3s/link-tokens-sealedsecret.yaml` and delete
    that token's line under `spec.encryptedData`. Do not touch the other lines.
 2. Open a PR, wait for `validate`, merge. Check each layer as in step 5 above
    until no pod lists the token.
@@ -227,16 +310,26 @@ everything a leaked token made:
 **If a token leaks:** revoke it first, then look at what it created. Rotating
 is the same as revoking and adding under a new name.
 
-## OKE teardown (read before issue #13)
+## OKE teardown: what must NOT be touched
 
-**Delete the Ingress before the cluster.** external-dns then removes
-`demo.sandeeprn.in` and its TXT owner record. Easiest: delete the
-`link-shortener` Application (or remove `ingress.yaml` from the overlay in a PR)
-and confirm in Cloudflare that both records are gone.
+The OKE target served the site until 2026-11-12. It still exists with no
+public way in; its teardown is issue #13 (due 2026-11-15).
 
-If the cluster goes first, the A record points at a released address. Remove
-**both** records by hand in Cloudflare: the A record `demo` and the TXT record
-whose name starts with `edns-`. Leave the blog's records alone.
+k3s has taken over the hostname and shares several things with OKE. Removing
+any of them takes the live site down or breaks it later:
 
-Afterwards, revoke the two Cloudflare tokens (unless k3s will take over the
-hostname) and disable or repoint the external probe (`PROBE_BASE_URL`).
+- **Keep both Cloudflare tokens** (`cert-manager-oke` and
+  `external-dns oci-demo`). k3s uses the same two sealed tokens
+  (`platform/cert-manager-issuers` and `platform/external-dns` in the gitops
+  repo). Also keep the Discord webhook: k3s's Alertmanager posts to the same
+  channel.
+- **Do not delete or edit the `demo` A record or its `edns-` TXT record** in
+  Cloudflare. They belong to k3s now (owner id `oci-demo-k3s`). OKE's own
+  records were already removed by OKE's external-dns after gitops PR
+  [#59](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-gitops/pull/59).
+- **Leave `PROBE_BASE_URL` as it is.** The external probe's secret already
+  points at the hostname, which k3s serves.
+- **Keep the Sealed Secrets key backup.** It is the k3s key (ADR 0022).
+
+The teardown checklist itself is issue
+[#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13).

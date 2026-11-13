@@ -5,7 +5,22 @@ For `RedirectErrorBudgetBurnFast`, `RedirectErrorBudgetBurnSlow` (critical) and
 `RedirectProbeNoAnswer` (critical) and `RedirectProbeMissing` (warning). The
 rules, tests and dashboard live in the gitops repo:
 `apps/link-shortener/base/slo-rules.yaml`, `tests/prometheus/*.test.yaml`,
-`dashboards/slo-redirect.json`.
+`apps/link-shortener/base/dashboards/slo-redirect.json`.
+
+Every command names the k3s kubeconfig, because kubectl's default context on
+the laptop is another cluster:
+
+```bash
+K="kubectl --kubeconfig $HOME/.kube/k3s.kubeconfig"     # k3s, NOT the OKE kubeconfig
+```
+
+## Not yet run on k3s in this form
+
+These were written for OKE; only the kubeconfig changed. Run each once on k3s
+and remove it from this list:
+
+- every `$K` command under *Triage*, *Database*, *Probe alerts* and *Recent deploy*, except `$K -n argocd get applications`
+- the `pg` function in *Testing the alert on purpose* (only during a planned test)
 
 ## What the alert means
 
@@ -34,7 +49,7 @@ database outage, #26) or 500 (a bug).
 
 ## Triage (5 minutes)
 
-Access: [access runbook](access.md) (OCI login, tunnel, port-forwards).
+Access: [access runbook](access.md) (tunnel, `$K`, port-forwards).
 
 1. **Grafana → "Link shortener / Redirect SLO".** The by-status panel shows
    whether it is 503s or 500s, and since when.
@@ -45,24 +60,24 @@ Access: [access runbook](access.md) (OCI login, tunnel, port-forwards).
    one of the two backend pods is likely bad:
 
    ```bash
-   kubectl -n link-shortener get pods -o wide
-   kubectl -n link-shortener logs <pod> --since=15m | tail -50
+   $K -n link-shortener get pods -o wide
+   $K -n link-shortener logs <pod> --since=15m | tail -50
    ```
 
 ## Database (503)
 
 ```bash
-kubectl -n link-shortener get pod postgres-0 -o wide        # Running? Restarts?
-kubectl -n link-shortener describe pod postgres-0 | tail -20 # events: volume attach, OOM, scheduling
-kubectl -n link-shortener logs postgres-0 --tail=50
-kubectl -n link-shortener get pvc                            # Bound?
+$K -n link-shortener get pod postgres-0 -o wide        # Running? Restarts?
+$K -n link-shortener describe pod postgres-0 | tail -20 # events: volume attach, OOM, scheduling
+$K -n link-shortener logs postgres-0 --tail=50
+$K -n link-shortener get pvc                            # Bound?
 ```
 
-- **Restarting or rescheduled:** a block-volume reattach to another node takes
-  a minute or two. The app answers 503 within about 2 s meanwhile and recovers
-  on its own (verified in #26).
-- **Pending:** read the events. A volume can only attach to a node in the same
-  availability domain (there is one AD here).
+- **Restarting:** on k3s Postgres restarts on the same node, with its
+  `local-path` volume (a directory on the node's disk). The app answers 503
+  within about 2 s meanwhile and recovers on its own (verified on OKE in #26).
+- **Pending:** read the events. The `local-path` volume exists only on the one
+  node, so Postgres can run nowhere else.
 - **Running but the app still returns 503:** check the credentials Secret and
   the pool settings (`PG*` env vars in the Deployment, ConfigMap `app-config`).
 
@@ -73,9 +88,9 @@ kubectl -n link-shortener get pvc                            # Bound?
 burn-rate alerts may stay quiet. Usually no backend pod is ready:
 
 ```bash
-kubectl -n link-shortener get pods -l app.kubernetes.io/name=backend -o wide
-kubectl -n link-shortener get endpointslices -l kubernetes.io/service-name=backend
-kubectl -n link-shortener describe deploy backend | tail -20   # rollout stuck? image pull?
+$K -n link-shortener get pods -l app.kubernetes.io/name=backend -o wide
+$K -n link-shortener get endpointslices -l kubernetes.io/service-name=backend
+$K -n link-shortener describe deploy backend | tail -20   # rollout stuck? image pull?
 ```
 
 A probe that gets 503s does not fire this alert; the burn-rate alerts handle
@@ -85,10 +100,10 @@ that case (go to *Database*).
 periods are unmonitored. Not urgent.
 
 ```bash
-kubectl -n monitoring get deploy blackbox-exporter
-kubectl -n monitoring logs deploy/blackbox-exporter --tail=20
-kubectl -n link-shortener get probe redirect
-kubectl -n argocd get application blackbox-exporter
+$K -n monitoring get deploy blackbox-exporter
+$K -n monitoring logs deploy/blackbox-exporter --tail=20
+$K -n link-shortener get probe redirect
+$K -n argocd get application blackbox-exporter
 ```
 
 The Prometheus UI's *Targets* page shows the `redirect-probe` job and its last
@@ -97,8 +112,8 @@ error.
 ## Recent deploy (500)
 
 ```bash
-kubectl -n argocd get applications                  # what synced, and when
-kubectl -n link-shortener get deploy backend -o jsonpath='{.spec.template.spec.containers[0].image}'
+$K -n argocd get applications                  # what synced, and when
+$K -n link-shortener get deploy backend -o jsonpath='{.spec.template.spec.containers[0].image}'
 ```
 
 Compare the time the errors started with the last tag-bump PR in the gitops
@@ -124,17 +139,17 @@ alert also needs more than 7.2% errors over the last *hour*, and three
 15-second outages are only about 2.5% of an hour's requests (tested in #53;
 the weekly budget is about 50 minutes of downtime, so blips should not page).
 
-Proven method (#53, 2026-10-25: fast alert firing about 7 minutes after the
+Proven method (#53, 2026-10-25 on OKE: fast alert firing about 7 minutes after the
 outage began, Discord firing and resolved messages):
 
-1. Send steady traffic through the public load balancer: a redirect every
+1. Send steady traffic through the public URL: a redirect every
    0.5 s, starting about 2.5 minutes before the outage, which also clears the
    traffic floor.
 2. Make Postgres refuse the app's database for 5 minutes. It keeps running,
    so liveness passes and nothing restarts, and nothing ArgoCD manages changes:
 
    ```bash
-   pg() { kubectl -n link-shortener exec postgres-0 -- sh -c "psql -X -At -U \"\$POSTGRES_USER\" -d postgres -c \"$1\""; }
+   pg() { $K -n link-shortener exec postgres-0 -- sh -c "psql -X -At -U \"\$POSTGRES_USER\" -d postgres -c \"$1\""; }
    pg 'ALTER DATABASE linkshortener ALLOW_CONNECTIONS false'
    pg "SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity WHERE datname = 'linkshortener'"
    # ... 5 minutes ...

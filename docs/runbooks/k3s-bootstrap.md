@@ -99,6 +99,9 @@ with every SealedSecret. A controller that starts without the old keys creates
 a new one, and every sealed file then fails to decrypt (ADR 0006). The keys
 cannot live in Git, so this is the one place they are applied by hand.
 
+The restore procedure is kept in one place, [sealed-secrets](sealed-secrets.md)
+("Restore"); this step is the record of how it was run on 2026-11-12.
+
 **The owner runs every command that reads or applies the key file**, in a
 directory outside every repo. Anyone helping checks only outcomes: the number
 of key Secrets, their names, and the public certificate.
@@ -313,9 +316,11 @@ Check: the landing page's example short link redirects on k3s. Its code is
 curl -sS --resolve demo.sandeeprn.in:443:$IP -o /dev/null -w '%{http_code} %{redirect_url}\n' https://demo.sandeeprn.in/seYOHlz   # 302
 ```
 
-Which object is the newest when no manual backup was taken: OKE objects carry
-the cluster in their name from the night of 2026-11-13
-(`link-shortener/oke/<timestamp>.pgc`); older ones are the un-prefixed
+Which object is the newest when no manual backup was taken: the change that
+put the cluster into object names merged on 2026-11-12. The first OKE object
+with the new name (`link-shortener/oke/<timestamp>.pgc`) was a manual backup
+at 2026-11-12 07:48 UTC; the first nightly one ran at 2026-11-12 21:30 UTC
+(03:00 IST on 2026-11-13). Older objects are the un-prefixed
 `link-shortener/<timestamp>.pgc`. Pick the newest of both kinds.
 
 Then run one manual backup on k3s:
