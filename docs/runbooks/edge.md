@@ -56,7 +56,7 @@ example link); the line "Create with a valid token gets 201" then FAILS with
 "LINK_TOKEN is not set", and everything else must pass:
 
 ```bash
-scripts/verify-public-url.sh --production --hsts --code seYOHlz
+scripts/verify-public-url.sh --production --code seYOHlz
 ```
 
 With the owner token (it creates one real link). The token is read with a
@@ -64,14 +64,14 @@ hidden prompt and never printed:
 
 ```bash
 read -rsp "link token (your owner token): " OWNER_LINK_TOKEN; echo; echo "length: ${#OWNER_LINK_TOKEN} (0 = nothing was read)"
-LINK_TOKEN="$OWNER_LINK_TOKEN" scripts/verify-public-url.sh --production --hsts --no-burst
+LINK_TOKEN="$OWNER_LINK_TOKEN" scripts/verify-public-url.sh --production --no-burst
 unset OWNER_LINK_TOKEN
 # 9 passed, 0 failed, 2 skipped
 ```
 
 It checks DNS, the redirect to HTTPS, the trusted certificate chain, HSTS, 401
 without a token, a link created with `LINK_TOKEN` and followed, and the rate
-limit. It prints no addresses. Do not paste the token into a command line (the
+limit. The HSTS check is on by default (`--no-hsts` skips it). It prints no addresses. Do not paste the token into a command line (the
 script reads the environment). The rate-limit check sends a burst of 600
 requests, so your own address gets 429 for a few seconds; do not run it during
 a load test. The script's `--cutover` flag checked the 2026-10-31 OKE cutover

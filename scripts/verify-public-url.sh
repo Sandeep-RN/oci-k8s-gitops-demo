@@ -9,8 +9,10 @@
 #                   by browsers; the TLS chain is not verified)
 #   --production    require a trusted production certificate (the chain must
 #                   verify with the system trust store)
-#   --hsts          also check the HSTS header. Without it that check is SKIPPED
-#                   (HSTS is not enabled until demo #90).
+#   --no-hsts       skip the HSTS header check. It runs by default, so a lost or
+#                   changed header fails the run instead of passing as a skip.
+#   --hsts          accepted and ignored (the check is already the default);
+#                   kept so older runbook commands still work
 #   --cutover       also check that no LoadBalancer Service remains for the app
 #                   (needs kubectl and the tunnel from scripts/oke-tunnel.sh)
 #   --code CODE     an existing short code to test the redirect with, when no
@@ -26,7 +28,8 @@
 #         HSTS_MAX_AGE   expected max-age in seconds (default 15552000, 180 days)
 #         RESOLVER       public DNS resolver to ask (default 1.1.1.1)
 #         KUBECONFIG     for --cutover (default ~/.kube/oke-demo.kubeconfig)
-# Needs:  bash, curl (7.66+ for --parallel), openssl, nslookup or dig;
+# Needs:  bash, curl (7.66+ for --parallel), openssl, timeout (GNU coreutils),
+#         nslookup or dig;
 #         kubectl for --cutover.
 #
 # Checks that create things: the valid-token check creates ONE link to
@@ -45,7 +48,7 @@ HSTS_MAX_AGE="${HSTS_MAX_AGE:-15552000}"
 RESOLVER="${RESOLVER:-1.1.1.1}"
 BURST_REQUESTS=600
 BURST_PARALLEL=150
-MODE="" DO_HSTS=0 DO_CUTOVER=0 DO_BURST=1 CODE=""
+MODE="" DO_HSTS=1 DO_CUTOVER=0 DO_BURST=1 CODE=""
 
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 2; }
 usage() { sed -n '2,/^set -uo/p' "$0" | sed -e '$d' -e 's/^# \{0,1\}//'; }
@@ -53,7 +56,10 @@ usage() { sed -n '2,/^set -uo/p' "$0" | sed -e '$d' -e 's/^# \{0,1\}//'; }
 while [ $# -gt 0 ]; do
   case "$1" in
     --staging|--production) [ -z "$MODE" ] || die "give only one of --staging, --production"; MODE="${1#--}" ;;
+    # HSTS is checked by default. --hsts is a no-op alias for old commands; it is
+    # not removed so they do not die with "unknown option". Last flag wins.
     --hsts) DO_HSTS=1 ;;
+    --no-hsts) DO_HSTS=0 ;;
     --cutover) DO_CUTOVER=1 ;;
     --no-burst) DO_BURST=0 ;;
     --code) [ $# -ge 2 ] || die "--code needs a value"; CODE="$2"; shift ;;
@@ -68,7 +74,7 @@ done
 [ -n "$MODE" ] || die "give --staging or --production (try --help)"
 case "$BURST_REQUESTS" in ''|*[!0-9]*) die "--burst-requests must be a number" ;; esac
 case "$HOST" in *[!A-Za-z0-9.-]*|'') die "bad host: $HOST" ;; esac
-for bin in curl openssl; do command -v "$bin" >/dev/null 2>&1 || die "$bin not found on PATH"; done
+for bin in curl openssl timeout; do command -v "$bin" >/dev/null 2>&1 || die "$bin not found on PATH"; done
 
 # A token that could break out of the curl config line is refused, not escaped.
 TOKEN="${LINK_TOKEN:-}"
@@ -151,8 +157,11 @@ check_not_proxied() {
 
 check_certificate() {
   local cert issuer
-  cert=$(printf '' | openssl s_client -connect "$HOST:443" -servername "$HOST" 2>/dev/null | openssl x509 2>/dev/null)
-  [ -n "$cert" ] || { DETAIL="no certificate from $HOST:443"; return 1; }
+  # s_client has no timeout of its own: a peer that accepts the TCP connection and
+  # then stalls the handshake would hang the whole run. 15 s is well above a normal
+  # handshake; on expiry $cert is empty and the check fails.
+  cert=$(printf '' | timeout 15 openssl s_client -connect "$HOST:443" -servername "$HOST" 2>/dev/null | openssl x509 2>/dev/null)
+  [ -n "$cert" ] || { DETAIL="no certificate from $HOST:443 (none sent, or no handshake within 15 s)"; return 1; }
   issuer=$(openssl x509 -noout -issuer <<<"$cert" | sed 's/^issuer= *//')
   openssl x509 -noout -checkhost "$HOST" <<<"$cert" | grep -q 'does match' || { DETAIL="certificate is not for $HOST"; return 1; }
   # Fail early enough to renew (cert-manager renews at 30 days left).
@@ -275,7 +284,7 @@ run_check "HTTP redirects permanently to HTTPS"           check_http_redirect
 if [ "$DO_HSTS" = 1 ]; then
   run_check "HSTS header, no subdomains or preload"       check_hsts
 else
-  skip_check "HSTS header, no subdomains or preload" "not enabled yet; pass --hsts"
+  skip_check "HSTS header, no subdomains or preload" "--no-hsts"
 fi
 run_check "Create without a token gets 401"               check_create_no_token
 run_check "Create with a wrong token gets 401"            check_create_wrong_token
