@@ -187,8 +187,11 @@ $K -n kube-system get secret -l sealedsecrets.bitnami.com/sealed-secrets-key --n
   enough. If kube-prometheus-stack is ever slower than the retries, the
   Application stops: once monitoring is Healthy, sync `link-shortener` by hand
   in the ArgoCD UI ([access](access.md); the `argocd` CLI is not installed on
-  the laptop). It has no wave on purpose: ordering it behind monitoring would
-  take the site down whenever monitoring is unhealthy.
+  the laptop). A sync wave would not fix this: with no annotation the app is
+  already in wave 0, after monitoring at -1. Between Applications, a wave only
+  orders creation; ArgoCD waits for a child Application to be Healthy only if a
+  health check for Applications is configured, and none is. So the app can
+  sync before the CRDs exist, and the retries are what make it succeed.
 
 **Traefik edge checks** (ADR 0022; before any DNS change):
 
