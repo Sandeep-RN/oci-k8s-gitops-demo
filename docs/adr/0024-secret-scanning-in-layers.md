@@ -32,11 +32,15 @@ Three layers, each catching what the one before can miss:
    that contains one.
 
 The same `.gitleaks.toml` is used by the hook and by CI. It extends the
-default rules with three of our own: `oci-ocid`,
-`oci-object-storage-namespace-url` and `oci-api-key-fingerprint`. In the
-gitops repo one narrow allowlist accepts kubeseal ciphertext (`Ag...`, 100 or
-more characters) for the `generic-api-key` rule only, because SealedSecrets
-are meant to be public (ADR 0006).
+default rules with four of our own: `oci-ocid`,
+`oci-object-storage-namespace-url`, `oci-api-key-fingerprint` and, since
+2026-11-14, `public-ipv4` (issue #167). The last one flags any IPv4 address
+outside the private, loopback, link-local, shared (100.64/10) and
+documentation ranges, apart from netmask values and the two public resolvers
+the repos use (1.1.1.1, 8.8.8.8). It is the same text in all three repos.
+In the gitops repo one narrow allowlist accepts kubeseal ciphertext (`Ag...`,
+100 or more characters) for the `generic-api-key` rule only, because
+SealedSecrets are meant to be public (ADR 0006).
 
 ## Consequences
 - A leak needs all three layers to miss it.
@@ -46,8 +50,9 @@ are meant to be public (ADR 0006).
   was added). The fix is a narrow allowlist on one rule, never a broad path
   exclusion.
 - Known gaps:
-  - There is no rule for public IPv4 addresses, so "never commit a public
-    IP" is still enforced only by review (roadmap).
+  - The `public-ipv4` rule does not see IPv6 addresses, an address split
+    across lines, or an address inside an image. For those, "never commit a
+    public IP" is still enforced only by review.
   - The gitleaks job is not a required check in any of the three repos.
     A red job warns but does not block a merge.
 

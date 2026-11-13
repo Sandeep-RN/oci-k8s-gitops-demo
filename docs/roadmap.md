@@ -48,8 +48,8 @@ would take them. None is started.
    succession, the change filter can skip the middle one.
 5. Automated dependency updates for charts, images, Actions and providers. Pin
    the app's base image by digest and its Python packages with hashes.
-6. A secret-scan rule for public IP addresses. The rule against committing
-   them is enforced only by review today.
+6. Done: a secret-scan rule for public IPv4 addresses (`public-ipv4` in each
+   repo's `.gitleaks.toml`, issue #167). IPv6 is not covered.
 
 **Changes the running cluster (each needs a live check)**
 

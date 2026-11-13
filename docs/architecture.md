@@ -381,7 +381,7 @@ Scripts in this repo:
 
 | Area | Control |
 |---|---|
-| Secrets in Git | gitleaks with OCI rules, as a pre-commit hook and as a full-history CI job in every repo. tfvars, state, backend.hcl and kubeconfig are git-ignored. Outputs holding OCIDs or IPs are marked sensitive. Only SealedSecrets may be committed, and CI rejects plain `Secret` manifests. Even the node's public IP is sealed |
+| Secrets in Git | gitleaks with OCI rules and a public-IPv4 rule, as a pre-commit hook and as a full-history CI job in every repo. tfvars, state, backend.hcl and kubeconfig are git-ignored. Outputs holding OCIDs or IPs are marked sensitive. Only SealedSecrets may be committed, and CI rejects plain `Secret` manifests. Even the node's public IP is sealed |
 | Change control | Every repo needs a PR and linear history on `main`; required checks `test` (app) and `validate` (gitops) |
 | Supply chain | Actions pinned by SHA; checksum-verified tool downloads; Trivy gate before push; pinned versions of charts, ArgoCD, Sealed Secrets and k3s |
 | Runtime | Non-root UID 10001, read-only root filesystem, all capabilities dropped, seccomp `RuntimeDefault`, no service-account token mounted |
