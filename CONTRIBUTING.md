@@ -17,8 +17,10 @@
   kubeconfig, OCIDs, public IPs, passwords or tokens. Use `example.tfvars`
   with placeholders.
 - **Terraform is applied by hand**, by the owner, with a short-lived session
-  token. There is no Terraform check in CI yet; see
-  [docs/roadmap.md](docs/roadmap.md).
+  token. CI never applies and holds no cloud credentials: the `checks`
+  workflow runs `fmt`, `validate` and any `terraform test` for each root (on
+  the minimum Terraform version and the latest), shellcheck on every script,
+  and the offline script tests.
 - **Docs say only what was run.** A runbook step or a number in
   `docs/evidence/` comes from a real run. If something was not run, the doc
   says so.
