@@ -110,8 +110,9 @@ Every change of approach is an ADR. The index is
   ([2026-10-24](docs/evidence/oke-drain-2026-10-24.md)), drain, rollout and
   scan gate ([2026-11-08](docs/evidence/oke-final-2026-11-10.md)), k3s bootstrap
   and DNS switch ([2026-11-12](docs/evidence/k3s-bootstrap-2026-11-12.md)).
-- **Videos** (silent screen recordings): [node drain, 2:00](https://youtu.be/ypoLkJUmsCI)
-  and [rollout under traffic, 1:45](https://youtu.be/_CFu4mpSBlg).
+- **Videos** (silent screen recordings): [node drain, 2:00](https://youtu.be/ypoLkJUmsCI),
+  [rollout under traffic, 1:45](https://youtu.be/_CFu4mpSBlg) and
+  [OKE live tour (app, ArgoCD, Grafana SLO, alerts), 9:36](https://youtu.be/jkP26YOaopc).
 - **Runbooks that were followed live, not only written:**
   [k3s bootstrap](docs/runbooks/k3s-bootstrap.md) (as run),
   [backup and restore](docs/runbooks/postgres-backup-restore.md),
