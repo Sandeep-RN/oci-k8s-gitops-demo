@@ -79,9 +79,16 @@ resource "oci_core_instance" "node" {
     # could never be fixed. A changed template takes effect on the next
     # deliberate rebuild (#57); repair a live node over SSH instead
     # (`sudo bash /usr/local/sbin/bootstrap-node.sh` is safe to re-run).
+    #
+    # ssh_authorized_keys is a first-boot value too, and changing it forces a
+    # replace of the live node (prevent_destroy then fails every plan). Rotate
+    # the key on the node in ~/.ssh/authorized_keys, not through Terraform
+    # (docs/runbooks/k3s-access.md). var.ssh_public_key then only matters for
+    # a deliberate rebuild (#57).
     ignore_changes = [
       source_details[0].source_id,
       metadata["user_data"],
+      metadata["ssh_authorized_keys"],
     ]
   }
 }

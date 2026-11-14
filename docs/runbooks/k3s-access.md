@@ -56,6 +56,25 @@ be pasted into an issue. Exit code 1 if any check failed.
 The A1 retry script has an offline test: `scripts/tests/a1-wait-and-apply.test.sh`.
 CI runs it on every pull request (`.github/workflows/checks.yml`).
 
+## Rotate the SSH key
+
+Do this on the node, not in Terraform. `ssh_public_key` in `terraform.tfvars` is
+the first-boot key, and `metadata["ssh_authorized_keys"]` is in `ignore_changes`
+on the instance (#157): editing the variable plans no change and does not touch
+the running node. Without that, the edit would plan a replace, which
+`prevent_destroy` refuses for every plan in this root.
+
+1. Create the new key pair on your laptop (`ssh-keygen -t ed25519 -f ~/.ssh/k3s-node-new`).
+2. With the old key still working, append the new public key on the node:
+   `ssh -i ~/.ssh/k3s-node ubuntu@<node-ip> '(echo; cat) >> ~/.ssh/authorized_keys' < ~/.ssh/k3s-node-new.pub`
+   (the `echo` guards against a file that lacks a final newline).
+3. In a second terminal, check the new key logs in (`ssh -i ~/.ssh/k3s-node-new ubuntu@<node-ip> true`).
+   Only then remove the old public key line from `~/.ssh/authorized_keys` on the node.
+4. Move the new private key to `~/.ssh/k3s-node` (or set `SSH_KEY` for the scripts).
+5. Update `ssh_public_key` in `terraform.tfvars` to the new public key, so a
+   deliberate rebuild (#57) starts with the key you actually use. `terraform plan`
+   still shows no changes.
+
 ## When something fails
 
 | Symptom | Cause and fix |
