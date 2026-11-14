@@ -3,7 +3,7 @@
 How the OCI Kubernetes GitOps demo is built, what runs today, and why it is
 shaped this way. Decisions link to their ADRs in [`docs/adr/`](adr/).
 
-> **As of 2026-11-13.** `https://demo.sandeeprn.in` runs on a single-node k3s
+> **As of 2026-11-14.** `https://demo.sandeeprn.in` runs on a single-node k3s
 > cluster on one Ampere A1 VM sized inside Always Free, since the DNS switch on
 > 2026-11-12. The OKE target served the site until 2026-11-12. It still exists
 > with no public way in; its teardown is issue
@@ -381,8 +381,8 @@ Scripts in this repo:
 | Area | Control |
 |---|---|
 | Secrets in Git | gitleaks with OCI rules and a public-IPv4 rule, as a pre-commit hook and as a full-history CI job in every repo. tfvars, state, backend.hcl and kubeconfig are git-ignored. Outputs holding OCIDs or IPs are marked sensitive. Only SealedSecrets may be committed, and CI rejects plain `Secret` manifests. Even the node's public IP is sealed |
-| Change control | Every repo needs a PR and linear history on `main`; required checks `test` (app) and `validate` (gitops) |
-| Supply chain | Actions pinned by SHA; checksum-verified tool downloads; Trivy gate before push; pinned versions of charts, ArgoCD, Sealed Secrets and k3s |
+| Change control | Every repo needs a PR and linear history on `main`; required checks `test` (app) and `validate` (gitops); this repo runs `checks` (Terraform fmt/validate/test, shellcheck) on every PR, not yet as a required check |
+| Supply chain | Actions pinned by SHA; Dependabot proposes updates for Actions, Terraform providers, pre-commit hooks, Python packages and the base image (not for charts or gitops image versions); checksum-verified tool downloads; Trivy gate before push; pinned versions of charts, ArgoCD, Sealed Secrets and k3s |
 | Runtime | Non-root UID 10001, read-only root filesystem, all capabilities dropped, seccomp `RuntimeDefault`, no service-account token mounted |
 | Database | The backend uses its own non-superuser role that owns only its table; the superuser is kept for the server, backups and the role-setup Job (ADR 0018) |
 | Network | The k3s node has a public IP in a public subnet. Its security list allows 22 from one CIDR, 80/443 and path-MTU ICMP; nothing else. The API is reached by SSH tunnel only. The host firewall is open, so the security list is the single gate (ADR 0012) |
@@ -457,7 +457,7 @@ rebuild proof on the same VM
 
 ## 12. Decision index
 
-All 22 decisions are listed in the [ADR index](adr/README.md). Start with these:
+All 24 decisions are listed in the [ADR index](adr/README.md). Start with these:
 
 - [0016](adr/0016-readiness-checks-pod-local-state-only.md): readiness checks
   only pod-local state, so a database outage gives fast 503s that the SLO counts.

@@ -1,6 +1,6 @@
 # Known limits and what comes next
 
-As of 2026-11-13. This page lists what is still open, what the project does
+As of 2026-11-14. This page lists what is still open, what the project does
 not do, what I would do next, and what would change for a real production
 system. It is the other half of the [README](../README.md).
 
@@ -12,6 +12,8 @@ system. It is the other half of the [README](../README.md).
 | Rebuild the k3s cluster on the same VM from Git, the key backup and the data backup | [#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57) | Runbook section written, not run |
 | Final README pass and a 3-minute video | [#58](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/58) | After #13 and #57 |
 | Count the sealing keys after the first renewal on k3s; a second key needs a new backup | [k3s-bootstrap](runbooks/k3s-bootstrap.md), step 2 | After 2026-11-23 |
+| Alerts on k3s for certificate expiry, Traefik 5xx and a full disk (next step 11) | [#140](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/140) | Not started |
+| Live checks on k3s: Prometheus memory, the Traefik ServiceMonitor, volume stats | [#141](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/141) | Not started |
 
 ## Known limits
 
@@ -30,24 +32,30 @@ These are accepted, each for a reason that is written down.
 ## Next steps
 
 These come from a review of all three repos on 2026-11-13, in the order I
-would take them. None is started.
+would take them. Items marked Done were finished on 2026-11-13 or 2026-11-14;
+the others are not started.
 
 **Small, with no effect on the running site**
 
 1. Done: `scripts/seal-link-tokens.sh` (gitops repo) writes to the k3s
    overlay (issue #171). It wrote to the OKE overlay, so a token change made
    as documented did not reach the live site.
-2. Keep a mistaken delete away from the database. Today, removing the app's
-   ArgoCD Application file would delete its namespace, and the database's
-   volume claim with it. Marking the Namespace so ArgoCD never deletes it
-   closes that path.
+2. Done: a mistaken delete is kept away from the database (issue #158).
+   Removing the app's ArgoCD Application file would have deleted its namespace,
+   and the database's volume claim with it. The Namespace is now marked so
+   ArgoCD never deletes it, checked on the live cluster.
 3. Done: CI for this repo (`.github/workflows/checks.yml`, issue #3) runs
    `terraform fmt`, `validate` and `test` for the four roots, shellcheck, and
    the offline script test.
-4. Make the app's CI build every commit on `main`. With three merges in quick
-   succession, the change filter can skip the middle one.
-5. Automated dependency updates for charts, images, Actions and providers. Pin
-   the app's base image by digest and its Python packages with hashes.
+4. Done, in a different way (issue #159): with three merges in quick
+   succession, the change filter could skip the middle one. On `main`, the
+   app's CI now compares the commit with the one that is deployed, not with the
+   previous push, so a skipped run cannot hide a code change.
+5. Partly done: Dependabot proposes updates for Actions (all three repos),
+   Terraform providers and pre-commit hooks (this repo), and Python packages and
+   the base image (app repo), issue #161. Not done: chart and image versions in
+   the gitops repo, the base image pinned by digest, Python packages pinned with
+   hashes.
 6. Done: a secret-scan rule for public IPv4 addresses (`public-ipv4` in each
    repo's `.gitleaks.toml`, issue #167). IPv6 is not covered.
 
