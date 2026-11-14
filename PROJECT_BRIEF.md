@@ -307,7 +307,7 @@ For pages that cannot render Mermaid.
 - Start here: [README](README.md), then [docs/architecture.md](docs/architecture.md)
 - Decisions: [docs/adr/README.md](docs/adr/README.md)
 - Proof: [docs/evidence/](docs/evidence/)
-- Videos: [node drain, 2:00](https://youtu.be/ypoLkJUmsCI), [rollout under traffic, 1:45](https://youtu.be/_CFu4mpSBlg)
+- Videos: [node drain, 2:00](https://youtu.be/ypoLkJUmsCI), [rollout under traffic, 1:45](https://youtu.be/_CFu4mpSBlg), [OKE live tour: app, ArgoCD, Grafana SLO, alerts, 9:36](https://youtu.be/jkP26YOaopc)
 - Limits and next steps: [docs/roadmap.md](docs/roadmap.md)
 - Write-ups of the problems, as issues: [label `post-idea`](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues?q=label%3Apost-idea)
 
