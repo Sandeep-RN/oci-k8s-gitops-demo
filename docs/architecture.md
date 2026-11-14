@@ -372,12 +372,16 @@ Scripts in this repo:
 - **Guardrails on commits:** `terraform fmt`, `terraform validate` and gitleaks
   (with custom OCI rules) run as pre-commit hooks; gitleaks also scans the full
   history in CI in all three repos, because `--no-verify` skips hooks.
+- **Checks in CI, with no credentials:** the `checks` workflow runs `fmt`,
+  `validate` and `terraform test` for every root on Terraform 1.12.0 (the
+  minimum) and the latest release, with the lock file read-only; shellcheck
+  on every script; and the offline test of the A1 retry script.
 
 ## 10. Security summary
 
 | Area | Control |
 |---|---|
-| Secrets in Git | gitleaks with OCI rules, as a pre-commit hook and as a full-history CI job in every repo. tfvars, state, backend.hcl and kubeconfig are git-ignored. Outputs holding OCIDs or IPs are marked sensitive. Only SealedSecrets may be committed, and CI rejects plain `Secret` manifests. Even the node's public IP is sealed |
+| Secrets in Git | gitleaks with OCI rules and a public-IPv4 rule, as a pre-commit hook and as a full-history CI job in every repo. tfvars, state, backend.hcl and kubeconfig are git-ignored. Outputs holding OCIDs or IPs are marked sensitive. Only SealedSecrets may be committed, and CI rejects plain `Secret` manifests. Even the node's public IP is sealed |
 | Change control | Every repo needs a PR and linear history on `main`; required checks `test` (app) and `validate` (gitops) |
 | Supply chain | Actions pinned by SHA; checksum-verified tool downloads; Trivy gate before push; pinned versions of charts, ArgoCD, Sealed Secrets and k3s |
 | Runtime | Non-root UID 10001, read-only root filesystem, all capabilities dropped, seccomp `RuntimeDefault`, no service-account token mounted |

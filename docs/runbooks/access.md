@@ -103,10 +103,12 @@ read the token from `LINK_TOKEN`, never from a file in a repo.
 `scripts/verify-public-url.sh` checks `https://demo.sandeeprn.in` from outside
 (DNS, certificate, redirects, token gate, rate limit) with a PASS/FAIL line per
 check and a non-zero exit on failure. Flags and checks are in its header. The
-standard run, as in step 8 of [k3s-bootstrap](k3s-bootstrap.md):
+HSTS check runs by default, so a missing or changed header fails the run;
+`--no-hsts` skips it (the old `--hsts` flag is still accepted and does nothing).
+The standard run, as in step 8 of [k3s-bootstrap](k3s-bootstrap.md):
 
 ```bash
-scripts/verify-public-url.sh --production --hsts --code seYOHlz
+scripts/verify-public-url.sh --production --code seYOHlz
 ```
 
 Without a token, `--code` gives it an existing short link to test the redirect
@@ -115,7 +117,7 @@ token:
 
 ```bash
 read -rsp "link token (your owner token): " OWNER_LINK_TOKEN; echo; echo "length: ${#OWNER_LINK_TOKEN} (0 = nothing was read)"
-LINK_TOKEN="$OWNER_LINK_TOKEN" scripts/verify-public-url.sh --production --hsts --no-burst
+LINK_TOKEN="$OWNER_LINK_TOKEN" scripts/verify-public-url.sh --production --no-burst
 unset OWNER_LINK_TOKEN
 # 9 passed, 0 failed, 2 skipped
 ```
