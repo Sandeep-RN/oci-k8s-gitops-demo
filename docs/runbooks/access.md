@@ -94,8 +94,7 @@ curl -s "$URL/readyz"                         # -> {"status":"ready"}
 ```
 
 Tokens are keys of the `link-tokens` SealedSecret in the gitops repo. Adding
-or rotating one is in the [edge runbook](edge.md); read its warning first, as
-the sealing script still writes to the OKE overlay. Scripts that create links
+or rotating one is in the [edge runbook](edge.md). Scripts that create links
 read the token from `LINK_TOKEN`, never from a file in a repo.
 
 ### Verify the public URL

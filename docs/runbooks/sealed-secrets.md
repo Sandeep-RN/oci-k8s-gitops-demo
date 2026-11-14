@@ -65,9 +65,9 @@ EOF
   `*-secret.yaml`, and the `validate` check rejects plain `kind: Secret`.
 - After a key renewal, refresh the committed cert:
   `kubeseal --kubeconfig ~/.kube/k3s.kubeconfig --fetch-cert > argocd/clusters/k3s/sealed-secrets-cert.pem`.
-  The gitops seal scripts (`scripts/seal-link-tokens.sh`,
-  `scripts/seal-cloudflare-token.sh`) still read the identical copy in
-  `argocd/clusters/oke/`, so refresh both files while both exist.
+  The gitops seal scripts read this file. Until the OKE folders are deleted
+  (after #13), `argocd/clusters/oke/` holds an identical copy: refresh it too,
+  so the two never disagree.
 
 ## Back up the keys
 
