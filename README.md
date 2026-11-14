@@ -2,11 +2,11 @@
 
 A small service, run the way a production one should be: built, deployed,
 observed and recovered through Git, on one free Oracle Cloud VM. This repo
-holds the infrastructure (Terraform), the decisions (22 ADRs), the runbooks,
+holds the infrastructure (Terraform), the decisions (24 ADRs), the runbooks,
 the test evidence and the issue tracker. Two sibling repos hold the
 application and the Kubernetes manifests.
 
-> **Status (2026-11-13):** live at
+> **Status (2026-11-14):** live at
 > **[demo.sandeeprn.in](https://demo.sandeeprn.in/)** on a single-node k3s
 > cluster (one Always Free Ampere A1 VM). The landing page has a working short
 > link; the API page is at `/docs`.
@@ -145,9 +145,10 @@ What comes next, and what would change at scale:
 
 ## How this was built
 
-I built this between 2026-10-20 and 2026-11-13 to practise running Kubernetes
+I built this between 2026-10-20 and 2026-11-14 to practise running Kubernetes
 the way I would want it run in production. Every change went through a pull
-request (125 merged across the three repos). Every change of approach is an
+request (162 merged across the three repos, 16 of them automated image tag
+bumps and 5 from Dependabot). Every change of approach is an
 ADR. Every claim on this page links to a test that was run on a live cluster.
 
 I used an AI coding assistant (Claude Code) throughout. It wrote much of the
@@ -165,11 +166,11 @@ assistant.
 terraform/       OCI infrastructure, one root per lifecycle: k3s/, shared/, guardrails/, oke/
 scripts/         state bootstrap, k3s tunnel and verify, public URL verify, OKE tunnel, A1 capacity retry
 docs/architecture.md   How it is built and why
-docs/adr/        Architecture decision records (0001 to 0022), with an index
+docs/adr/        Architecture decision records (0001 to 0024), with an index
 docs/runbooks/   Access, k3s bootstrap, the edge, backups and restore, Sealed Secrets keys, the SLO alert, cost guardrails
 docs/evidence/   Write-ups of tests run on the clusters
 docs/roadmap.md  Known limits, next steps, what changes at scale
-.github/         External probe (the slow outside check), gitleaks history scan
+.github/         CI checks (Terraform fmt/validate/test, shellcheck), external probe (the slow outside check), gitleaks history scan, Dependabot
 GLOSSARY.md      Project terms
 PROJECT_BRIEF.md Facts, numbers and ready-made text for writing about this project elsewhere
 ```

@@ -2,7 +2,7 @@
 
 The single source of facts about this project for anything written about it
 somewhere else: a resume, a portfolio page, a profile, a post, an interview
-answer. **Last verified: 2026-11-13.**
+answer. **Last verified: 2026-11-14.**
 
 ## How to use this file
 
@@ -31,7 +31,7 @@ decision written down.
 Cloud's free tier. Every change is delivered through Git: CI builds and scans
 the image, a pull request changes the tag, ArgoCD deploys it. It has HTTPS, an
 availability SLO with burn-rate alerts, nightly backups with tested restores,
-and 22 recorded decisions.
+and 24 recorded decisions.
 
 **150 words.** I wanted to run Kubernetes the way a production service should
 be run, at a cost of zero. The free ARM capacity I planned for was unavailable
@@ -60,12 +60,12 @@ with no public way in; its teardown is issue
 |---|---|
 | Name | oci-k8s-gitops-demo |
 | Kind | Personal project. One person: design, decisions, build, operation |
-| Period | 2026-10-20 to 2026-11-13 for the build; two open items below |
+| Period | 2026-10-20 to 2026-11-14 for the build; two open items below |
 | Repos (public) | [infrastructure and docs](https://github.com/Sandeep-RN/oci-k8s-gitops-demo), [application and CI](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-app), [Kubernetes manifests](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-gitops) |
 | Live URL | <https://demo.sandeeprn.in> (landing page with a working short link; API page at `/docs`) |
 | Cloud | Oracle Cloud Infrastructure. One Always Free Ampere A1 VM: 2 OCPU, 12 GB, arm64, Ubuntu 24.04. (Oracle's [Always Free page](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm) gives 1,500 OCPU hours and 9,000 GB hours a month, "equivalent to 2 OCPUs and 12 GB of memory"; checked 2026-11-13) |
 | Kubernetes | k3s v1.36 on one node (today). OKE, two nodes, for the multi-node tests (2026-10-22 to 2026-11-12) |
-| Size of the work | 125 merged pull requests (11 of them automated image-tag bumps), 22 ADRs, 8 runbooks, 3 evidence write-ups |
+| Size of the work | 162 merged pull requests (16 of them automated image-tag bumps, 5 from Dependabot), 24 ADRs, 8 runbooks, 3 evidence write-ups |
 | Cost | Target $0 a month. The OKE target cost about SGD 3.05 a day, paid from trial credit |
 | Built with | An AI coding assistant, Claude Code. See "How it was built" |
 
@@ -162,7 +162,7 @@ How to quote these honestly:
 | No load balancer on k3s | Real client IPs and no cost; the price is no redundancy at the edge | [0022](docs/adr/0022-moving-the-demo-from-oke-to-k3s.md) |
 | One node on the free tier | $0 a month; high availability is given up, and said so | [0001](docs/adr/0001-single-node-k3s-on-always-free-a1.md) |
 
-All 22: [docs/adr/README.md](docs/adr/README.md).
+All 24: [docs/adr/README.md](docs/adr/README.md).
 
 ## Problems found and fixed
 
@@ -192,7 +192,9 @@ Do not claim any of these.
   second.
 - **Autoscaling, NetworkPolicies, a log stack, a dead man's switch** for the
   monitoring stack.
-- **Terraform in CI.** `terraform apply` is run by hand from a laptop.
+- **Terraform plan or apply in CI.** CI runs only offline checks (`fmt`,
+  `validate`, `test`, no cloud credentials). `plan` and `apply` are run by
+  hand from a laptop.
 - **A measured uptime figure** or a measured recovery time.
 - **Database replication.** One replica; up to 24 hours of data can be lost.
 
@@ -200,7 +202,7 @@ The full list, with what would come next: [docs/roadmap.md](docs/roadmap.md).
 
 ## How it was built
 
-Built between 2026-10-20 and 2026-11-13 with an AI coding assistant (Claude
+Built between 2026-10-20 and 2026-11-14 with an AI coding assistant (Claude
 Code). The assistant wrote much of the YAML, Terraform and scripts, and first
 drafts of the docs. The owner made the decisions, applied the infrastructure,
 ran or supervised every live test, and reviewed and merged the pull requests.
@@ -233,7 +235,7 @@ Pick three to five. Do not merge two bullets into one bigger claim.
 - Put a hard spending cap on a cloud account as code (Terraform, OCI quota
   policy) and proved it by a launch it had to refuse, before enabling pay as
   you go; the service is designed to cost $0 a month.
-- Recorded 22 architecture decisions and wrote 8 runbooks; nightly PostgreSQL
+- Recorded 24 architecture decisions and wrote 8 runbooks; nightly PostgreSQL
   backups with a write-only identity, restored twice.
 
 ### Portfolio card
@@ -268,7 +270,7 @@ with automatic certificates, a 7-day availability SLO with burn-rate alerts
 that I proved with a planned outage, and nightly backups I have restored
 twice. On a two-node cluster I drained a node under live traffic with no
 failed request. I then moved the live site to a single free VM; the cutover
-was one pull request. 22 decisions and 8 runbooks are in the repo.
+was one pull request. 24 decisions and 8 runbooks are in the repo.
 
 ### Diagram in plain ASCII
 

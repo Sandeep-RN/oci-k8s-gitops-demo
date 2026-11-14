@@ -7,7 +7,9 @@ commands were first run on the OKE target on 2026-10-25: manual backup,
 permission checks, and a restore drill whose result matched the live data row
 for row. On 2026-11-12 OKE's backup was restored into k3s Postgres (34 rows,
 equal to the dump; step 6 of [k3s-bootstrap](k3s-bootstrap.md)), and a backup
-written from k3s proved that the node may write to the bucket.
+written from k3s proved that the node may write to the bucket. The nightly
+CronJob then ran on schedule on k3s: the Jobs of 2026-11-13 and 2026-11-14
+completed (the bucket objects themselves were not listed).
 
 ## Not yet run on k3s in this form
 

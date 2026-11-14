@@ -139,14 +139,20 @@ Do not change any quota or budget during the upgrade.
 
 ## 5. After the OKE teardown (#13)
 
-Once `terraform destroy` in `terraform/oke` is done and Cost Analysis shows no
-OKE compute:
+Once `terraform destroy` in `terraform/oke` is done and the Console shows no
+OKE instance, block volume or load balancer left. Do not wait for Cost
+Analysis: a quota only refuses new creates, so tightening it the same day just
+closes the gap sooner. The next-day Cost Analysis (as in step 4) is the proof
+that the bill stopped, not a precondition.
+
+0. If the provider version changed since the last plan, run
+   `terraform init -backend-config=../backend.hcl` in `terraform/guardrails`.
 
 1. Delete the three overlap lines (`e5_ocpus_quota`, `e5_memory_gbs_quota`,
    `block_storage_gbs_quota`) from `terraform/guardrails/terraform.tfvars`.
 2. `terraform plan`: expect exactly 1 to change (the quota statements: E5 to 0,
-   storage to 200). Then apply.
-3. Repeat step 2b: E5 quota 0, storage quota 200.
+   storage to 200). Stop if anything else changes. Then apply.
+3. Repeat step 2b: E5 quota 0, storage quota 200 (the k3s boot volume uses 50).
 
 ## When a quota blocks something you need
 
