@@ -34,9 +34,9 @@ would take them. None is started.
 
 **Small, with no effect on the running site**
 
-1. Point `scripts/seal-link-tokens.sh` (gitops repo) at the k3s overlay. It
-   still writes to the OKE overlay, so a token change made as documented would
-   not reach the live site.
+1. Done: `scripts/seal-link-tokens.sh` (gitops repo) writes to the k3s
+   overlay (issue #171). It wrote to the OKE overlay, so a token change made
+   as documented did not reach the live site.
 2. Keep a mistaken delete away from the database. Today, removing the app's
    ArgoCD Application file would delete its namespace, and the database's
    volume claim with it. Marking the Namespace so ArgoCD never deletes it

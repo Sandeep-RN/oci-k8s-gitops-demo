@@ -195,8 +195,8 @@ Do one component at a time, so a mistake affects one.
    the old token active for now.
 2. In a gitops repo worktree on a new branch, seal it (hidden prompt, nothing
    in shell history). The script writes to `platform/`, which both clusters
-   read, and seals with `argocd/clusters/oke/sealed-secrets-cert.pem`, the
-   same certificate as k3s's (one set of keys, ADR 0022):
+   read, and seals with `argocd/clusters/k3s/sealed-secrets-cert.pem` (one
+   set of keys for both clusters, ADR 0022):
    ```bash
    scripts/seal-cloudflare-token.sh cert-manager     # or: external-dns
    ```
@@ -219,15 +219,9 @@ Do one component at a time, so a mistake affects one.
 
 ## Add a link-creation token
 
-> **Do not use this procedure on the live site yet.** Step 3 runs
-> `scripts/seal-link-tokens.sh` (gitops repo), which still writes to
-> `apps/link-shortener/overlays/oke` and seals with the OKE certificate path.
-> The live cluster (k3s) reads `apps/link-shortener/overlays/k3s`, so this
-> procedure would change only the OKE copy, and the new token would not work
-> on the site. Use it only after the script points at `overlays/k3s` (tracked
-> in [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)). The
-> steps are kept because they were followed live on OKE on 2026-10-31 and
-> their checks still apply.
+> Followed live on OKE on 2026-10-31. Since gitops PR #66 (issue #171),
+> `scripts/seal-link-tokens.sh` writes to `apps/link-shortener/overlays/k3s`
+> with the k3s certificate; the procedure has not been run on k3s yet.
 
 For a new tester or job. Tokens are named; the name is stored with each link
 (`created_by`) and logged, the value never is.
@@ -282,15 +276,9 @@ For a new tester or job. Tokens are named; the name is stored with each link
 
 ## Revoke a link-creation token
 
-> **Do not use this procedure on the live site yet.** It was written for and
-> followed on OKE (2026-10-31), where the hand edit below and
-> `scripts/seal-link-tokens.sh` used the same overlay. The script still writes
-> to `apps/link-shortener/overlays/oke` with the OKE certificate path, while
-> the live cluster (k3s) reads `overlays/k3s`, so a rotation (revoke, then add)
-> would change only the OKE copy. Use it only after the script points at
-> `overlays/k3s` (tracked in
-> [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)). The
-> hand edit in step 1 names the k3s file, and has not been run on k3s.
+> Followed live on OKE on 2026-10-31. The hand edit in step 1 and
+> `scripts/seal-link-tokens.sh` now use the same overlay again,
+> `overlays/k3s` (gitops PR #66, issue #171). Not run on k3s yet.
 
 1. On a new branch from the latest `origin/main` (as in step 3 above), open
    `apps/link-shortener/overlays/k3s/link-tokens-sealedsecret.yaml` and delete

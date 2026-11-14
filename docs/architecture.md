@@ -244,9 +244,8 @@ token:
 cert-manager Cloudflare token, the external-dns Cloudflare token (separate, so
 a leak or rotation affects one and Cloudflare's audit log tells them apart),
 the link-creation tokens, and the node's public IP. Sealing scripts in the
-gitops repo: `seal-cloudflare-token.sh`, `seal-link-tokens.sh` (it still writes
-to `overlays/oke`; the k3s overlay holds a copy of the same file) and
-`seal-traefik-public-ip.sh`.
+gitops repo: `seal-cloudflare-token.sh`, `seal-link-tokens.sh` and
+`seal-traefik-public-ip.sh`, all sealing with the k3s cluster's certificate.
 
 **Verified on k3s** (2026-11-12 and 2026-11-13,
 [bootstrap runbook](runbooks/k3s-bootstrap.md) steps 4, 5 and 8): the Ingress
