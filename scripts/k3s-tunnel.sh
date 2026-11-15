@@ -69,8 +69,18 @@ if [ -n "${K3S_NODE_IP:-}" ]; then
   NODE_IP="$K3S_NODE_IP"
 else
   command -v terraform >/dev/null 2>&1 || die "terraform not on PATH (or set K3S_NODE_IP)"
-  NODE_IP="$(terraform -chdir="$TF_DIR" output -raw public_ip 2>/dev/null | tr -d '\r')" \
-    || die "no Terraform output. Is the OCI session valid (oci session authenticate)? Or set K3S_NODE_IP."
+  # Keep Terraform's own error (#180). An expired session is not the only cause:
+  # a provider missing after a lock-file bump fails the same way and needs
+  # `terraform init`. Hiding stderr made that look like a session problem.
+  TF_ERR="$(mktemp)"
+  if ! NODE_IP="$(terraform -chdir="$TF_DIR" output -no-color -raw public_ip 2>"$TF_ERR" | tr -d '\r')"; then
+    printf 'terraform output failed (first lines; OCIDs and IPs masked):\n' >&2
+    { tr -d '\r' <"$TF_ERR" | grep -v '^[[:space:]]*$' | head -n 6 \
+      | sed -E 's/ocid1\.[a-z0-9_.-]+/<ocid>/g; s/[0-9]{1,3}(\.[0-9]{1,3}){3}/<ip>/g; s/^/  /' >&2; } || true
+    rm -f "$TF_ERR"
+    die "session expired: oci session refresh --profile oke-demo. Provider missing: terraform -chdir=terraform/k3s init -backend-config=../backend.hcl. Or set K3S_NODE_IP."
+  fi
+  rm -f "$TF_ERR"
 fi
 [[ "$NODE_IP" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || die "node IP does not look like an IPv4 address"
 

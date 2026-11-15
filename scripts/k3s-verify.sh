@@ -72,10 +72,18 @@ done
 if [ -n "${K3S_NODE_IP:-}" ]; then
   NODE_IP="$K3S_NODE_IP"
 else
-  NODE_IP="$(terraform -chdir="$TF_DIR" output -raw public_ip 2>/dev/null | tr -d '\r')" || NODE_IP=""
+  # Keep Terraform's own error (#180): a provider missing after a lock-file
+  # bump fails here just like an expired session, and needs `terraform init`.
+  TF_ERR="$(mktemp)"
+  if ! NODE_IP="$(terraform -chdir="$TF_DIR" output -no-color -raw public_ip 2>"$TF_ERR" | tr -d '\r')"; then
+    NODE_IP=""
+    printf 'terraform output failed (first lines; OCIDs and IPs masked):\n' >&2
+    grep -v '^[[:space:]]*$' "$TF_ERR" | head -n 6 | redact | sed 's/^/  /' >&2
+  fi
+  rm -f "$TF_ERR"
 fi
 if ! [[ "$NODE_IP" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]]; then
-  printf 'no node IP: run oci session authenticate, or set K3S_NODE_IP\n' >&2
+  printf 'no node IP. Session expired: oci session refresh --profile oke-demo. Provider missing: terraform -chdir=terraform/k3s init -backend-config=../backend.hcl. Or set K3S_NODE_IP.\n' >&2
   exit 2
 fi
 
