@@ -23,7 +23,7 @@ Every command names the k3s kubeconfig, because kubectl's default context on
 the laptop may be another cluster:
 
 ```bash
-K="kubectl --kubeconfig $HOME/.kube/k3s.kubeconfig"     # k3s, NOT the OKE kubeconfig
+K="kubectl --kubeconfig $HOME/.kube/k3s.kubeconfig"     # the k3s kubeconfig, not kubectl's default context
 ```
 
 ## How backups work
