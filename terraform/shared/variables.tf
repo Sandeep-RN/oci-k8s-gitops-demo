@@ -1,6 +1,5 @@
-# Copy the first three values from ../oke/terraform.tfvars (written by
-# scripts/bootstrap-state.sh) into a git-ignored terraform.tfvars here.
-# See example.tfvars.
+# scripts/bootstrap-state.sh writes terraform.tfvars here (git-ignored) with the
+# first three values. See example.tfvars.
 
 variable "tenancy_ocid" {
   description = "Tenancy OCID. Dynamic groups live at the tenancy root."

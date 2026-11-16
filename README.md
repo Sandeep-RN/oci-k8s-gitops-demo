@@ -13,9 +13,8 @@ application and the Kubernetes manifests.
 >
 > Before that, the same service ran on a two-node OKE cluster (Oracle's managed
 > Kubernetes), paid from trial credit. The multi-node tests below were done
-> there. The OKE target served the site until 2026-11-12. It still exists with
-> no public way in; its teardown is issue
-> [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13) (due 2026-11-15).
+> there. The OKE target served the site until 2026-11-12 and was destroyed on
+> 2026-11-15 (issue [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)).
 
 ## How it fits together
 
@@ -164,8 +163,8 @@ assistant.
 ## Repository layout
 
 ```
-terraform/       OCI infrastructure, one root per lifecycle: k3s/, shared/, guardrails/, oke/
-scripts/         state bootstrap, k3s tunnel and verify, public URL verify, OKE tunnel, A1 capacity retry
+terraform/       OCI infrastructure, one root per lifecycle: k3s/, shared/, guardrails/
+scripts/         state bootstrap, k3s tunnel and verify, public URL verify, A1 capacity retry (history)
 docs/architecture.md   How it is built and why
 docs/adr/        Architecture decision records (0001 to 0024), with an index
 docs/runbooks/   Access, k3s bootstrap, the edge, backups and restore, Sealed Secrets keys, the SLO alert, cost guardrails

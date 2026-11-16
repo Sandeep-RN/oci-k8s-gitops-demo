@@ -4,7 +4,7 @@ ADR 0021. Root: `terraform/guardrails`. Issue: #113.
 
 > **Status:** steps 1 to 4 were done on 2026-11-10 and 2026-11-11 (guardrails
 > applied and proven, Pay As You Go upgrade, next-day check). Step 5 (tighten
-> the quotas) waits for the OKE teardown
+> the quotas) was done on 2026-11-15, after the OKE teardown
 > ([#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)). The
 > steps below are the record of what was done.
 
@@ -15,11 +15,11 @@ step 2 has passed.**
 
 ## What is enforced
 
-| Guardrail | While OKE runs | After the teardown (#13) |
+| Guardrail | During the OKE overlap (history, until 2026-11-15) | Now |
 |---|---|---|
 | Compute, every shape | 0 | 0 |
 | A1 (AD and regional) | 2 OCPU / 12 GB | 2 OCPU / 12 GB |
-| E5 (OKE workers) | 2 OCPU / 16 GB | 0 / 0 |
+| E5 (was the OKE workers) | 2 OCPU / 16 GB | 0 / 0 (no statement: the family-wide zero covers it) |
 | Boot + block volumes | 250 GB | 200 GB |
 | Volume backups / replicas | 5 / 0 GB | 5 / 0 GB |
 | Classic load balancers | 0 | 0 |
@@ -34,7 +34,7 @@ clusters, Object Storage, data transfer and all other services.
 oci session authenticate --region ap-hyderabad-1 --profile-name oke-demo
 cd terraform/guardrails
 # terraform.tfvars is git-ignored. In a fresh checkout, copy example.tfvars to
-# it and fill in tenancy_ocid and region from ../oke/terraform.tfvars.
+# it (scripts/bootstrap-state.sh writes tenancy_ocid, region and oci_profile).
 # Set budget_alert_recipients to your email.
 grep -c 'REPLACE_ME' terraform.tfvars    # must print 0
 terraform init -backend-config=../backend.hcl
@@ -56,7 +56,7 @@ not from the docs page.
 ## 2. Prove the quota blocks (before the upgrade)
 
 **a. The Console:** Governance & Administration > Quota Policies shows
-`oci-k8s-gitops-demo-cost-guardrails` with 12 statements, in order.
+`oci-k8s-gitops-demo-cost-guardrails` with 10 statements, in order (12 until the E5 statements were removed, #182).
 
 **b. Effective quotas** (read-only). `effective-quota-value` is present only
 when a quota applies:
@@ -75,9 +75,9 @@ for L in standard-e4-core-count standard-e2-micro-core-count standard-a1-core-co
 done
 ```
 
-Expected: E4 and micro have quota 0 and available 0. Both A1 counts have quota 2
-(available 2 while there is no node). E5 has quota 2, used 2 and available 0. The
-regional count needs no `--availability-domain`, which is why there's a fallback.
+Expected now: E4, micro and E5 have quota 0 and available 0. Both A1 counts have
+quota 2 (the node uses them). During the OKE overlap E5 had quota 2, used 2 and
+available 0. The regional count needs no `--availability-domain`, which is why there's a fallback.
 
 **c. A real launch the quota must refuse.** This uses E2.1.Micro on purpose: if
 the quota somehow fails, the instance is Always Free and costs nothing.
@@ -85,7 +85,7 @@ Never test by asking for more A1 than the quota: if that went through, it
 would be billed and would break the Always Free size.
 
 ```bash
-C=<compartment-ocid>                   # from terraform.tfvars of oke/ or k3s/
+C=<compartment-ocid>                   # from terraform.tfvars of k3s/
 SUBNET=$($OCI network subnet list --compartment-id "$C" \
   --query 'data[?"display-name"==`k3s-node-public`].id | [0]' --raw-output)
 IMAGE=$($OCI compute image list --compartment-id "$C" --operating-system "Oracle Linux" \
@@ -106,7 +106,7 @@ $OCI compute instance launch --compartment-id "$C" --availability-domain "$AD" \
   upgrade:
   `oci compute instance terminate --instance-id <id> --preserve-boot-volume false --force --profile oke-demo --auth security_token`
 
-**d. The A1 watcher** (`scripts/a1-wait-and-apply.sh`): its next attempt must
+**d. The A1 watcher** (`scripts/a1-wait-and-apply.sh`; it has since finished, as run on 2026-11-10): its next attempt must
 still fail with out of capacity, not with a quota error. A quota error there
 means the A1 allowance is wrong. Fix it before upgrading.
 
@@ -137,23 +137,28 @@ Do not change any quota or budget during the upgrade.
 - **Limits went up, quotas still hold:** repeat step 2b. The service limits
   may now be higher; the effective quotas must be unchanged.
 
-## 5. After the OKE teardown (#13)
+## 5. After the OKE teardown (#13): done 2026-11-15
 
-Once `terraform destroy` in `terraform/oke` is done and the Console shows no
-OKE instance, block volume or load balancer left. Do not wait for Cost
-Analysis: a quota only refuses new creates, so tightening it the same day just
-closes the gap sooner. The next-day Cost Analysis (as in step 4) is the proof
-that the bill stopped, not a precondition.
+The Console showed no OKE instance, block volume or load balancer left. The
+quotas were tightened the same day, without waiting for Cost Analysis: a quota
+only refuses new creates, so tightening it sooner just closes the gap sooner.
+The next-day Cost Analysis (as in step 4) is the proof that the bill stopped,
+not a precondition.
 
-0. If the provider version changed since the last plan, run
-   `terraform init -backend-config=../backend.hcl` in `terraform/guardrails`.
-
-1. Delete the three overlap lines (`e5_ocpus_quota`, `e5_memory_gbs_quota`,
-   `block_storage_gbs_quota`) from `terraform/guardrails/terraform.tfvars`.
-2. `terraform plan`: expect exactly 1 to change (the quota statements: E5 to 0,
-   storage to 200). Stop if anything else changes. Then apply.
-3. Repeat step 2b: E5 quota 0, storage quota 200 (the k3s boot volume uses 50).
-
+1. The three overlap lines (`e5_ocpus_quota`, `e5_memory_gbs_quota`,
+   `block_storage_gbs_quota`) were deleted from the git-ignored
+   `terraform/guardrails/terraform.tfvars`. `terraform plan` should show exactly 1 to
+   change (the quota statements: E5 to 0, storage to 200); stop if anything else
+   changes; then apply. If the
+   provider version had changed since the last plan, `terraform init
+   -backend-config=../backend.hcl` comes first.
+2. Step 2b repeated: E5 quota 0, storage quota 200 (the k3s boot volume uses 50).
+3. Demo #182 then removed the E5 statements and the `e5_*` variables from the
+   code. The E5 quotas stay 0 through the family-wide `zero compute-core
+   quotas` statement. The next apply shows the quota policy's statements
+   changing (two lines fewer) and the early-warning alert's message text
+   (it no longer says "during the OKE overlap"); nothing else. Repeat step 2b
+   after it: E5 must still show quota 0.
 ## When a quota blocks something you need
 
 Raise the variable in a PR (the validations put an upper bound on each one; going

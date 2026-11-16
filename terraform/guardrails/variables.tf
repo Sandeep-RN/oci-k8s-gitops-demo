@@ -1,6 +1,5 @@
-# Cost guardrails (ADR 0021). Defaults are the steady state after the OKE
-# teardown (#13): Always Free only. While OKE still runs, raise the E5 and
-# block-storage values in the git-ignored terraform.tfvars (see example.tfvars).
+# Cost guardrails (ADR 0021). Defaults are the Always Free steady state (the OKE
+# overlap ended with the teardown on 2026-11-15, #13).
 #
 # Validations are upper bounds on purpose: raising a cap beyond them needs a
 # reviewed code change, not just a tfvars edit.
@@ -47,36 +46,14 @@ variable "a1_memory_gbs_quota" {
   }
 }
 
-variable "e5_ocpus_quota" {
-  description = "VM.Standard.E5 OCPUs allowed. 2 while the OKE workers run (2 x 1 OCPU); 0 after the teardown (#13)."
-  type        = number
-  default     = 0
-
-  validation {
-    condition     = var.e5_ocpus_quota >= 0 && var.e5_ocpus_quota <= 2
-    error_message = "e5_ocpus_quota must be 0-2: exactly what the OKE pool uses, no room for growth."
-  }
-}
-
-variable "e5_memory_gbs_quota" {
-  description = "VM.Standard.E5 memory (GB) allowed. 16 while the OKE workers run (2 x 8 GB); 0 after the teardown (#13)."
-  type        = number
-  default     = 0
-
-  validation {
-    condition     = var.e5_memory_gbs_quota >= 0 && var.e5_memory_gbs_quota <= 16
-    error_message = "e5_memory_gbs_quota must be 0-16: exactly what the OKE pool uses."
-  }
-}
-
 variable "block_storage_gbs_quota" {
-  description = "Boot + block volume GB allowed. 200 is the Always Free total; 250 during the OKE + k3s overlap (OKE 200 GB + the 50 GB k3s boot volume)."
+  description = "Boot + block volume GB allowed. 200 is the Always Free total (the k3s boot volume uses 50)."
   type        = number
   default     = 200
 
   validation {
-    condition     = var.block_storage_gbs_quota >= 50 && var.block_storage_gbs_quota <= 250
-    error_message = "block_storage_gbs_quota must be 50-250 (200 Always Free, +50 only for the OKE overlap)."
+    condition     = var.block_storage_gbs_quota >= 50 && var.block_storage_gbs_quota <= 200
+    error_message = "block_storage_gbs_quota must be 50-200 (200 is the Always Free total)."
   }
 }
 

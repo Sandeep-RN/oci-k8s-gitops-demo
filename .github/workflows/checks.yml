@@ -26,9 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # oke: delete this entry together with terraform/oke after the
-        # teardown (#13), or the job fails on a missing folder.
-        root: [shared, k3s, guardrails, oke]
+        root: [shared, k3s, guardrails]
         # 1.12.0 is the floor in versions.tf (first release with the native
         # oci backend); running it proves the floor. "latest" shows
         # deprecations and breaking changes before a laptop upgrade does.

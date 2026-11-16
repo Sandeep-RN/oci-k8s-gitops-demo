@@ -3,12 +3,11 @@
 How the OCI Kubernetes GitOps demo is built, what runs today, and why it is
 shaped this way. Decisions link to their ADRs in [`docs/adr/`](adr/).
 
-> **As of 2026-11-14.** `https://demo.sandeeprn.in` runs on a single-node k3s
+> **As of 2026-11-14; the OKE status was updated on 2026-11-16.** `https://demo.sandeeprn.in` runs on a single-node k3s
 > cluster on one Ampere A1 VM sized inside Always Free, since the DNS switch on
-> 2026-11-12. The OKE target served the site until 2026-11-12. It still exists
-> with no public way in; its teardown is issue
-> [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13) (due
-> 2026-11-15). How the project got here:
+> 2026-11-12. The OKE target served the site until 2026-11-12 and was destroyed
+> on 2026-11-15 (issue [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)).
+> How the project got here:
 > [section 11](#11-history-the-oke-target-and-the-move-to-k3s).
 
 ## 1. At a glance
@@ -21,7 +20,7 @@ shaped this way. Decisions link to their ADRs in [`docs/adr/`](adr/).
 | **Cluster** | k3s v1.36.5+k3s1 on one A1 VM (2 OCPU / 12 GB), Terraform-managed, `prevent_destroy` | Rebuild proof on the same VM ([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57)); HPA; NetworkPolicies |
 | **Edge** | No load balancer: node public IP, k3s's Traefik, real client IPs, per-client rate limit, cert-manager (Let's Encrypt production), external-dns, HSTS, token-gated link creation | |
 | **Ops** | Prometheus, Grafana, Alertmanager; redirect SLO with burn-rate alerts to Discord; in-cluster and external probes; nightly backups with tested restores; quota cap and budget alerts; runbooks | k6 load job; log stack; dead man's switch for the monitoring stack |
-| **OKE target** | Served the site until 2026-11-12; drain, PDB and rollout evidence captured | Teardown ([#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13), due 2026-11-15), then the quota tightening |
+| **OKE target** | Served the site until 2026-11-12; drain, PDB and rollout evidence captured | Destroyed on 2026-11-15 ([#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)), quotas tightened the same day; the next-day Cost Analysis is the proof the bill stopped |
 
 ## 2. Repositories
 
@@ -93,20 +92,18 @@ oci-k8s-gitops-demo-gitops/
                            ServiceMonitor, Probe, SLO rules, dashboard; image tag set by CI
     overlays/k3s/          Ingress, rate-limit and HSTS middlewares, local-path volume,
                            backup cluster name, sealed Postgres credentials and link tokens
-    overlays/oke/          OKE differences; no Ingress since the DNS switch
-  edge/                    cert-manager/ and external-dns/ values (values-k3s.yaml, values-oke.yaml);
+  edge/                    cert-manager/ and external-dns/ values (values-k3s.yaml);
                            traefik-k3s/ (HelmChartConfig for k3s's Traefik, sealed public IP,
-                           ServiceMonitor); traefik/ (upstream chart values, OKE only)
+                           ServiceMonitor)
   platform/                sealed-secrets controller; cert-manager-issuers and external-dns
                            with their sealed Cloudflare tokens
-  monitoring/              kube-prometheus-stack/ (values.yaml, values-k3s.yaml, values-oke.yaml),
-                           blackbox-exporter/, and k3s/ and oke/ for the Grafana and Discord SealedSecrets
+  monitoring/              kube-prometheus-stack/ (values.yaml, values-k3s.yaml),
+                           blackbox-exporter/, and k3s/ for the Grafana and Discord SealedSecrets
   scripts/                 seal-cloudflare-token.sh, seal-link-tokens.sh, seal-traefik-public-ip.sh
   tests/prometheus/        promtool unit tests for the alert rules
   argocd/
     install/               upstream ArgoCD v3.5.6, pinned, via Kustomize
     clusters/k3s/          root.yaml (root-k3s), apps/, sealed-secrets-cert.pem
-    clusters/oke/          the same for the OKE target
 ```
 
 ```mermaid
@@ -132,9 +129,9 @@ off, server-side apply); `link-shortener` uses the `demo` project and
   or `kube-system` use the `default` project.
 - **Overlays carry only real environment differences.** On k3s: the Postgres
   volume on `local-path` (5Gi), `BACKUP_CLUSTER=k3s`, the per-client rate
-  limit, and the landing page's example link. On OKE: `oci-bv` volumes, a strict
-  one-pod-per-node spread, and a shared rate limit. k3s runs on the OKE sealing
-  keys, so both overlays hold the same sealed files (ADR 0022).
+  limit, and the landing page's example link. (The retired OKE overlay had `oci-bv`
+  volumes, a strict one-pod-per-node spread and a shared rate limit.) k3s runs on
+  the sealing keys OKE used, so the sealed files were kept as they were (ADR 0022).
 
 ## 5. The cluster: k3s on one Always Free node
 
@@ -336,20 +333,19 @@ flowchart LR
   only by port-forward, never exposed (ADR 0014).
 
 The OKE target had a private API endpoint instead, reached through OCI Bastion
-with `scripts/oke-tunnel.sh`: a throwaway SSH key and session (at most 3 h)
-for one client address, deleted on Ctrl+C ([OKE access runbook](runbooks/access.md)).
+with a throwaway SSH key and a session of at most 3 h for one client address. It
+was destroyed on 2026-11-15, and its script was removed in #182.
 
 ## 9. Infrastructure as code
 
-Four Terraform roots, each with its own state key, so an apply in one can never
+Three Terraform roots, each with its own state key, so an apply in one can never
 touch another's resources.
 
 | Root | Holds | Lifecycle |
 |---|---|---|
 | `terraform/k3s` | VCN, internet gateway, public subnet, security list (22 from one CIDR, 80/443, path-MTU ICMP), the A1 instance with cloud-init | Long-lived; `prevent_destroy` on the instance |
 | `terraform/shared` | Backup bucket, 14-day lifecycle rule, dynamic group and write-only policy | Outlives any cluster; `prevent_destroy` on the bucket |
-| `terraform/guardrails` | One tenancy quota policy and one monthly budget with three alert rules (ADR 0021) | Changes on its own schedule; tightened after [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13) |
-| `terraform/oke` | The OKE target: VCN, gateways, subnets, Basic cluster, node pool, Bastion | Tagged `teardown_by=2026-11-15`; destroyed in [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13) |
+| `terraform/guardrails` | One tenancy quota policy and one monthly budget with three alert rules (ADR 0021) | Changes on its own schedule; tightened to the Always Free sizes after [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13) (2026-11-15) |
 
 Scripts in this repo:
 
@@ -359,8 +355,7 @@ Scripts in this repo:
 | [`k3s-tunnel.sh`](../scripts/k3s-tunnel.sh) | kubectl access to the k3s API over SSH |
 | [`k3s-verify.sh`](../scripts/k3s-verify.sh) | Nine checks: no drift, `prevent_destroy`, SSH key-only, API and kubelet closed, first boot finished, node Ready, k3s version, pod DNS and egress |
 | [`verify-public-url.sh`](../scripts/verify-public-url.sh) | Checks the public URL from outside: DNS, redirect, certificate, HSTS, token gate, rate limit |
-| [`a1-wait-and-apply.sh`](../scripts/a1-wait-and-apply.sh) | Polls for A1 capacity and applies `terraform/k3s` when it appears (written for the capacity shortage) |
-| [`oke-tunnel.sh`](../scripts/oke-tunnel.sh) | kubectl access to the OKE target through OCI Bastion |
+| [`a1-wait-and-apply.sh`](../scripts/a1-wait-and-apply.sh) | Polls for A1 capacity and applies `terraform/k3s` when it appears (written for the capacity shortage; kept as history) |
 
 - **State:** the native `oci` backend, in a versioned Object Storage bucket,
   with locking (ADR 0003).
@@ -387,7 +382,7 @@ Scripts in this repo:
 | Database | The backend uses its own non-superuser role that owns only its table; the superuser is kept for the server, backups and the role-setup Job (ADR 0018) |
 | Network | The k3s node has a public IP in a public subnet. Its security list allows 22 from one CIDR, 80/443 and path-MTU ICMP; nothing else. The API is reached by SSH tunnel only. The host firewall is open, so the security list is the single gate (ADR 0012) |
 | Cloud auth | Short-lived session tokens; a dedicated compartment. In-cluster access to OCI is the node's identity with a write-only policy on one bucket (ADR 0017). The legacy instance metadata endpoint is disabled |
-| Cost | One tenancy quota policy as the hard cap (compute zeroed except A1 2 OCPU / 12 GB; E5 and extra block storage allowed only until the OKE teardown) and one monthly budget (SGD 7) with three alert rules: actual spend above SGD 1, actual at 100%, forecast at 100% (ADR 0021). A budget only alerts, up to a day late |
+| Cost | One tenancy quota policy as the hard cap (compute zeroed except A1 2 OCPU / 12 GB; block storage 200 GB) and one monthly budget (SGD 7) with three alert rules: actual spend above SGD 1, actual at 100%, forecast at 100% (ADR 0021). A budget only alerts, up to a day late |
 
 ## 11. History: the OKE target and the move to k3s
 
@@ -426,10 +421,8 @@ proofs cannot be repeated on the single k3s node.
 compute. The trial credit is USD 300 (SGD 400 in the account), ending about
 2026-11-19.
 
-The OKE target served the site until 2026-11-12. It still exists with no
-public way in; its teardown is issue
-[#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13) (due
-2026-11-15).
+The OKE target served the site until 2026-11-12 and was destroyed on
+2026-11-15 (issue [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)).
 
 ### The move to k3s
 
@@ -449,10 +442,13 @@ public way in; its teardown is issue
   [gitops PR #59](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-gitops/pull/59)
   removed OKE's Ingress. OKE's external-dns deleted its record and k3s's
   created its own; the record was absent for 25 seconds.
+- **2026-11-15, teardown:** the OKE target was destroyed
+  ([#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)) and the
+  quotas were tightened to the Always Free sizes (E5 0, storage 200 GB). The
+  node pool delete had to be forced because pod disruption budgets blocked the
+  drain ([how](runbooks/k3s-bootstrap.md#the-oke-teardown-2026-11-15-13)).
 
-Still open: the OKE teardown and the quota tightening after it
-([#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)), and the
-rebuild proof on the same VM
+Still open: the rebuild proof on the same VM
 ([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57)).
 
 ## 12. Decision index

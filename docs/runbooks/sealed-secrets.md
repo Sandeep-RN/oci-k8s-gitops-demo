@@ -16,7 +16,7 @@ Only the kubeconfig or the certificate path changed for these. Run each once
 on k3s and remove it from this list:
 
 - the minimal export in "Back up the keys" (it ran on OKE on 2026-11-12, and its file was restored on k3s)
-- the seal example with `--cert argocd/clusters/k3s/sealed-secrets-cert.pem` (the file is identical to the OKE one it ran with)
+- the seal example with `--cert argocd/clusters/k3s/sealed-secrets-cert.pem` (the same certificate the OKE target used: the keys are the same)
 - `kubeseal --kubeconfig ~/.kube/k3s.kubeconfig --fetch-cert > argocd/clusters/k3s/sealed-secrets-cert.pem` (after a key renewal)
 - `$K -n kube-system delete secret <generated-key-name>`, `$K -n kube-system delete pod -l name=sealed-secrets-controller` and the `wait` after it (restore, only when the controller already ran without the keys)
 - the `patch` that removes a `restartedAt` annotation (gotcha 2)
@@ -30,7 +30,7 @@ on k3s and remove it from this list:
 | Rotation | The controller adds a new key every 30 days and keeps the old ones, so older SealedSecrets still decrypt. **Back up again after each renewal.** |
 | Public cert | `argocd/clusters/<cluster>/sealed-secrets-cert.pem` in the gitops repo; encrypt-only, safe to publish |
 | Backup location | The owner's password manager. **Never** a repo, chat, ticket or screenshot |
-| Scope | **One set of keys for this project** (ADR 0022): the OKE keys were restored on k3s on 2026-11-12, so the same sealed files decrypt on both clusters and one backup covers both. Do not delete it at the OKE teardown: it is the k3s key now |
+| Scope | **One set of keys for this project** (ADR 0022): the OKE keys were restored on k3s on 2026-11-12, so the same sealed files decrypt on k3s as they did on OKE. The backup was kept at the OKE teardown (2026-11-15): it is the k3s key now |
 
 All commands assume the k3s tunnel is running (`scripts/k3s-tunnel.sh`, see
 [k3s-access](k3s-access.md)) and use:
@@ -65,9 +65,7 @@ EOF
   `*-secret.yaml`, and the `validate` check rejects plain `kind: Secret`.
 - After a key renewal, refresh the committed cert:
   `kubeseal --kubeconfig ~/.kube/k3s.kubeconfig --fetch-cert > argocd/clusters/k3s/sealed-secrets-cert.pem`.
-  The gitops seal scripts read this file. Until the OKE folders are deleted
-  (after #13), `argocd/clusters/oke/` holds an identical copy: refresh it too,
-  so the two never disagree.
+  The gitops seal scripts read this file.
 
 ## Back up the keys
 

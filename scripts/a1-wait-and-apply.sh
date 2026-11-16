@@ -2,6 +2,10 @@
 # Wait for Ampere A1 capacity in the home region, then create the k3s node
 # (terraform/k3s). Run it yourself in a terminal you can leave open.
 #
+# HISTORY: written for the capacity wait that ended on 2026-11-11, when the node
+# was created (demo #7). Kept, with its offline test, as the record of how that
+# was done and as the retry loop if the node ever has to be created again.
+#
 # Why: the home region has ONE availability domain, so "try another AD" is not
 # an option, and A1 capacity appears in short windows. Polling beats clicking.
 #
@@ -15,7 +19,7 @@
 # Safety:
 #   - Before applying, the plan must contain 0 to change and 0 to destroy. If
 #     not, the script stops instead of touching anything existing.
-#   - Only terraform/k3s is applied (its own state key), never terraform/oke.
+#   - Only terraform/k3s is applied (its own state key), nothing else.
 #   - Everything printed has OCIDs and IPv4 addresses masked, so a pasted
 #     terminal does not leak them into a public issue.
 #

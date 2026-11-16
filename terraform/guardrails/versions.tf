@@ -11,7 +11,7 @@ terraform {
 
   # Native OCI backend (ADR 0003): terraform init -backend-config=../backend.hcl
   # Own state key (ADR 0021): the guardrails change on their own schedule
-  # (tightened after the OKE teardown, loosened for an experiment), and those
+  # (tightened, or loosened for an experiment), and those
   # applies should never plan against the backup bucket in `shared`.
   backend "oci" {
     key = "guardrails/terraform.tfstate"

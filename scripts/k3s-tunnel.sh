@@ -17,8 +17,9 @@
 # The kubeconfig holds the cluster-admin client certificate. Treat it like a
 # password: never copy it into a repo, issue or chat.
 #
-# LOCAL_PORT defaults to 16443, not 6443, so this tunnel and scripts/oke-tunnel.sh
-# (6443) can run at the same time during the move from OKE.
+# LOCAL_PORT defaults to 16443, not 6443, so it does not clash with anything else
+# on the usual Kubernetes port (a local cluster, another tunnel). The kubeconfig
+# this script writes points at it.
 #
 # Host key: the first connection trusts the node's key and stores it in your
 # known_hosts (trust on first use). A rebuilt node has a new key, and SSH then
@@ -78,7 +79,7 @@ else
     { tr -d '\r' <"$TF_ERR" | grep -v '^[[:space:]]*$' | head -n 6 \
       | sed -E 's/ocid1\.[a-z0-9_.-]+/<ocid>/g; s/[0-9]{1,3}(\.[0-9]{1,3}){3}/<ip>/g; s/^/  /' >&2; } || true
     rm -f "$TF_ERR"
-    die "session expired: oci session refresh --profile oke-demo. Provider missing: terraform -chdir=terraform/k3s init -backend-config=../backend.hcl. Or set K3S_NODE_IP."
+    die "no node IP: see Terraform's error above. Possible causes: expired session (oci session refresh --profile oke-demo); backend or provider not initialised (terraform -chdir=terraform/k3s init -backend-config=../backend.hcl). Or set K3S_NODE_IP."
   fi
   rm -f "$TF_ERR"
 fi

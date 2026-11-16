@@ -161,7 +161,7 @@ $K -n monitoring get secret grafana-admin -o jsonpath='{.data.admin-password}' |
 ```
 
 The password was generated once and stored only as a SealedSecret
-(`monitoring/k3s/` in the gitops repo, a copy of the OKE one); this command is
+(`monitoring/k3s/` in the gitops repo, sealed for the retired OKE target); this command is
 the only way to read it.
 
 First things to try:
@@ -210,35 +210,3 @@ Discord receiver.
 ## Closing down
 
 Ctrl+C the port-forwards and the tunnel.
-
-## History: access to the OKE target
-
-The OKE target served the site until 2026-11-12. It still exists with no
-public way in; its teardown is issue #13 (due 2026-11-15). This section goes
-away with the teardown.
-
-OKE's Kubernetes API has a private endpoint, reached through OCI Bastion
-(ADR 0010, ADR 0015):
-
-```text
-laptop ──ssh──► OCI Bastion ──► Kubernetes API (private)     kubectl, port-forward
-```
-
-- Log in to OCI first (the same `oci session authenticate` as above).
-  `kubectl` on OKE uses the same token: each call fetches a short-lived
-  Kubernetes token through the OCI CLI (`oci ce cluster generate-token`), so
-  when the session expires every `kubectl` command fails with "exec plugin ...
-  failed" or 401 until you log in again.
-- `scripts/oke-tunnel.sh` (or `OCI_CLI=~/bin/oci.exe scripts/oke-tunnel.sh`
-  if `oci` is not on PATH) creates a Bastion session (about 30-60 s), writes
-  `~/.kube/oke-demo.kubeconfig` and holds the tunnel open on 127.0.0.1:6443.
-  Ignore the "post-quantum key exchange" warning. **Ctrl+C** closes the tunnel
-  and deletes the Bastion session; a forgotten session expires on its own
-  after 3 h.
-- Use `kubectl --kubeconfig ~/.kube/oke-demo.kubeconfig`. OKE had 2 nodes and
-  the root Application `root-oke`.
-- A stale tunnel that could not be closed with Ctrl+C leaves a session behind:
-  delete it in Console → Bastion.
-- If the Bastion refuses the connection, your public IP changed: update
-  `bastion_client_cidr` in `terraform/oke/terraform.tfvars`, then
-  `terraform apply`.

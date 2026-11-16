@@ -6,7 +6,7 @@ Terms used across the three repos. Use these words in issues, specs and ADRs.
 - **App repo**: `oci-k8s-gitops-demo-app`. Application code, Dockerfiles and CI.
 - **Gitops repo**: `oci-k8s-gitops-demo-gitops`. Kubernetes manifests and ArgoCD Applications; the source of truth for the cluster.
 - **Node**: the single Always Free A1 instance running k3s.
-- **OKE target**: the short-lived, multi-node managed Kubernetes cluster on trial credit that runs the same gitops repo through `overlays/oke`; torn down by 2026-11-15 (ADR 0015). It served the site until 2026-11-12; its teardown is issue #13. Not the node.
+- **OKE target**: the short-lived, multi-node managed Kubernetes cluster on trial credit that ran the same gitops repo through `overlays/oke` (removed in #182); destroyed on 2026-11-15 (ADR 0015, issue #13). It served the site until 2026-11-12. Not the node.
 - **Always Free**: Oracle's permanently free resource limits (2 OCPU / 12 GB of A1), the final target for the demo.
 - **Trial credit**: the 30-day $300 credit, used only for disposable experiments.
 - **Quota policy**: an OCI rule that refuses any create request that would push usage past a set amount; the only real spending cap here (ADR 0021).
