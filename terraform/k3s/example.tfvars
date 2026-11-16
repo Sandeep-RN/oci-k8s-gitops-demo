@@ -1,5 +1,6 @@
 # Placeholders only. Copy to the git-ignored terraform.tfvars and fill in.
-# tenancy_ocid, compartment_ocid and region: same values as ../oke/terraform.tfvars.
+# scripts/bootstrap-state.sh writes tenancy_ocid, compartment_ocid, region and
+# oci_profile; you add ssh_allowed_cidr and ssh_public_key.
 tenancy_ocid     = "ocid1.tenancy.oc1..<placeholder>"
 compartment_ocid = "ocid1.compartment.oc1..<placeholder>"
 region           = "<home-region>"

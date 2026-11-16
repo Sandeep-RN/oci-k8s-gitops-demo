@@ -1,6 +1,6 @@
 # The first four come from terraform.tfvars (git-ignored); see example.tfvars.
-# tenancy_ocid, compartment_ocid and region are the same values as in
-# ../oke/terraform.tfvars (written by scripts/bootstrap-state.sh).
+# scripts/bootstrap-state.sh writes tenancy_ocid, compartment_ocid, region and
+# oci_profile there; ssh_allowed_cidr and ssh_public_key are added by hand.
 
 variable "tenancy_ocid" {
   description = "Tenancy OCID (used to look up the availability domain)."
@@ -117,7 +117,7 @@ variable "k3s_version" {
 }
 
 variable "vcn_cidr" {
-  description = "VCN address space. Differs from the OKE VCN (10.20.0.0/16)."
+  description = "VCN address space. (The retired OKE target used 10.20.0.0/16.)"
   type        = string
   default     = "10.30.0.0/16"
 }

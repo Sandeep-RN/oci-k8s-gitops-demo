@@ -11,8 +11,8 @@ terraform {
 
   # Native OCI backend (ADR 0003). Bucket, namespace, region and auth come from
   # the git-ignored ../backend.hcl:  terraform init -backend-config=../backend.hcl
-  # Own state key, separate from OKE's, so destroying the OKE target can never
-  # reach this node (ADR 0015).
+  # Own state key, separate from the retired OKE root's, so destroying a cluster
+  # root can never reach this node (ADR 0015).
   backend "oci" {
     key = "k3s/terraform.tfstate"
   }

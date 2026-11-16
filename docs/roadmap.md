@@ -1,6 +1,6 @@
 # Known limits and what comes next
 
-As of 2026-11-14. This page lists what is still open, what the project does
+As of 2026-11-14 (the OKE rows updated 2026-11-16). This page lists what is still open, what the project does
 not do, what I would do next, and what would change for a real production
 system. It is the other half of the [README](../README.md).
 
@@ -8,7 +8,7 @@ system. It is the other half of the [README](../README.md).
 
 | Item | Issue | State |
 |---|---|---|
-| Tear down the OKE target, then tighten the quotas to the Always Free sizes | [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13), [#113](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/113) | Due 2026-11-15 |
+| Prove the OKE teardown stopped the bill (next-day Cost Analysis); the OKE target was destroyed and the quotas tightened on 2026-11-15 | [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13), [#113](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/113) | Destroyed; open until the Cost Analysis |
 | Rebuild the k3s cluster on the same VM from Git, the key backup and the data backup | [#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57) | Runbook section written, not run |
 | Final README pass and a 3-minute video | [#58](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/58) | After #13 and #57 |
 | Count the sealing keys after the first renewal on k3s; a second key needs a new backup | [k3s-bootstrap](runbooks/k3s-bootstrap.md), step 2 | After 2026-11-23 |

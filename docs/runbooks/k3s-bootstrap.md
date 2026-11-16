@@ -48,7 +48,7 @@ and the gitops repo's k3s cluster root on `main`.
 ```
 Order:  1 tunnel -> 2 sealing keys -> 3 ArgoCD + root -> 4 apps healthy, edge, certificate
         -> 5 edge test (curl --resolve) -> 6 data restore
-        -> 7 DNS switch -> 8 public check -> (then OKE teardown #13)
+        -> 7 DNS switch (move only) -> 8 public check
 ```
 
 Times on the first run: step 3 to all apps healthy 3.5 minutes; certificate
@@ -58,16 +58,15 @@ total, most of it step 2.
 Shorthand used below:
 
 ```bash
-K="kubectl --kubeconfig $HOME/.kube/k3s.kubeconfig"     # k3s, NOT the OKE kubeconfig
+K="kubectl --kubeconfig $HOME/.kube/k3s.kubeconfig"     # the k3s kubeconfig, not kubectl's default context
 # The node's public IP, read into a variable and never printed. Needs a valid
 # OCI session and the demo repo's main checkout (terraform/k3s is initialised there).
 IP=$(terraform -chdir=terraform/k3s output -raw public_ip | tr -d '\r'); echo "IP read: ${#IP} characters"
 ```
 
 Every command that changes a cluster names its kubeconfig. kubectl's default
-context on the laptop is a different cluster, and during an overlap two demo
-clusters are reachable: check `$K get nodes` shows `k3s-node-vnic` before each
-change.
+context on the laptop may be a different cluster: check `$K get nodes` shows
+`k3s-node-vnic` before each change.
 
 Never paste raw `external-dns` logs or `curl -v` output anywhere public: they
 contain the Cloudflare zone id and IP addresses. The commands below strip them.
@@ -84,13 +83,9 @@ $K get nodes                     # k3s-node-vnic   Ready
 
 The session token lasts about an hour and `oci session refresh` fails once it
 has expired. Log in again before step 6 and before step 7. An expired session
-shows as `executable oci failed with exit code 1` from the OKE kubeconfig, and
-as an error from `terraform output`. The k3s tunnel is plain SSH and does not
+shows as an error from `terraform output` (the OKE kubeconfig used to fail with
+`executable oci failed with exit code 1` too). The k3s tunnel is plain SSH and does not
 need the session.
-
-Only for the move from OKE (not for a rebuild): OKE is the source of the keys
-and the data, so open its tunnel too, in a third terminal, from this repo's
-root: `scripts/oke-tunnel.sh`.
 
 ## 2. Restore the sealing keys (BEFORE ArgoCD syncs anything)
 
@@ -177,8 +172,8 @@ $K -n kube-system get secret -l sealedsecrets.bitnami.com/sealed-secrets-key --n
     | diff - <(tr -d '\r' < argocd/clusters/k3s/sealed-secrets-cert.pem) && echo "cert matches"
   ```
 
-  Because the keys are the OKE keys, the cert is OKE's, and the sealed files are
-  copied unchanged (same names and namespaces, `--scope strict`).
+  Because the keys are the ones OKE used, the cert is OKE's, and the sealed files
+  were copied unchanged (same names and namespaces, `--scope strict`).
 - Postgres starts on an empty volume, and the backend creates an empty `links`
   table (ADR 0016). The site works but has no links until step 6.
 - The link-shortener Application needs the monitoring CRDs (ServiceMonitor,
@@ -225,17 +220,6 @@ before the retry; do not delete and recreate the Certificate in a loop:
 $K -n link-shortener describe certificate,certificaterequest,order,challenge
 ```
 
-**While another cluster still owns the DNS record** (the move from OKE only):
-k3s's external-dns sees the same hostname. It must not change anything, and
-public DNS must still point at the other cluster:
-
-```bash
-$K -n external-dns logs deploy/external-dns --since=10m | grep -E 'action=' | sed -E 's/ zone=[0-9a-f]+//'
-# prints nothing: no CREATE, UPDATE or DELETE ("All records are already up to date" each minute)
-D=$(curl -s -H 'accept: application/dns-json' 'https://1.1.1.1/dns-query?name=demo.sandeeprn.in&type=A' \
-  | grep -oE '"data":"[^"]+"' | cut -d'"' -f4)
-[ "$D" = "$IP" ] && echo "DNS: the k3s node" || echo "DNS: not the k3s node (${D:+some other address}${D:-no record})"
-```
 
 ## 5. Edge test before DNS moves
 
@@ -262,25 +246,16 @@ accepts either.
 
 Restores the source cluster's newest backup into k3s Postgres. Do it within 14
 days of that backup (the bucket's lifecycle deletes older objects). The bucket
-survives the OKE teardown. Full procedure and the reasons for each flag:
+is in `terraform/shared` (`prevent_destroy`), so it outlives any cluster. Full procedure and the reasons for each flag:
 [postgres-backup-restore](postgres-backup-restore.md), case **B (volume lost)**:
 the new empty volume plus `pg_restore --clean --if-exists`.
 
 Log in to OCI again first (step 1) if the session is older than about 45
 minutes.
 
-**A fresh backup on the source cluster**, so that no link is lost (ADR 0007
-accepts up to a day; this makes it minutes). For the move from OKE
-(`KO="kubectl --kubeconfig $HOME/.kube/oke-demo.kubeconfig"`):
-
-```bash
-$KO -n link-shortener get cronjob postgres-backup \
-  -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[?(@.name=="upload")].env[?(@.name=="BACKUP_CLUSTER")].value}{"\n"}'   # oke
-J=postgres-backup-manual-$(date -u +%H%M)
-$KO -n link-shortener create job --from=cronjob/postgres-backup "$J"
-$KO -n link-shortener wait job/"$J" --for=condition=complete --timeout=400s
-$KO -n link-shortener logs job/"$J" -c upload | tail -1     # uploaded link-shortener/oke/<timestamp>.pgc
-```
+Take a fresh backup on the source cluster first, so that no link is lost (ADR 0007
+accepts up to a day; this makes it minutes). For the move from OKE the commands
+are in [As run: the move from OKE](#as-run-the-move-from-oke-2026-11-12-and-13).
 
 For a rebuild, the source is k3s itself and this backup is taken before the
 uninstall (rebuild step 1); the object is under `link-shortener/k3s/`.
@@ -343,37 +318,9 @@ the bucket.
 
 ## 7. DNS switch (done 2026-11-13; not part of a rebuild)
 
-Kept as the record of how the hostname moved from OKE to k3s. In a rebuild the
-record never leaves k3s, so this step is skipped.
-
-A short gap is acceptable (ADR 0022). The order matters: external-dns on each
-cluster owns its record by a TXT owner id and will not overwrite a record it
-does not own, so the old cluster must let go first.
-
-1. In the gitops repo, a PR removes the Ingress from the old cluster's overlay
-   (gitops PR #59). The gitops CI required an Ingress in every deployed
-   overlay; the same PR changed that rule to require **no** Ingress in
-   `overlays/oke`, so two clusters can never claim the hostname again.
-   **Merging the PR is the switch.** Before merging: both tunnels up, CI green,
-   both external-dns logging "All records are already up to date".
-2. After the merge, the old cluster's ArgoCD prunes the Ingress and its
-   external-dns (`--policy=sync`) deletes the A record and its TXT owner record
-   (`edns-a-demo.sandeeprn.in`). If ArgoCD is no longer healthy there, delete
-   both records in Cloudflare by hand (ADR 0020).
-3. k3s's external-dns creates its own records from the k3s Ingress status.
-   Watch (the `sed` removes the zone id):
-
-   ```bash
-   $K -n external-dns logs deploy/external-dns --since=10m | grep -E 'action=' | sed -E 's/ zone=[0-9a-f]+//'
-   # action=CREATE record=demo.sandeeprn.in ... type=A, and the TXT record
-   ```
-
-4. Public DNS equals the node's public IP: the DNS-over-HTTPS lookup from
-   step 4 prints `DNS: the k3s node`. (`dig` is not installed on the laptop.)
-
-First run: merged 22:10:14 UTC, OKE deleted its records 22:13:00, k3s created
-its own 22:13:25, so the record was absent for 25 seconds. The record's TTL is
-300 seconds; resolvers may keep the old answer that long.
+Only the move from OKE had a DNS switch. In a rebuild the record never leaves
+k3s, so this step is skipped. How it was done is kept under [As run: the move
+from OKE](#as-run-the-move-from-oke-2026-11-12-and-13), at the end of this page.
 
 ## 8. Check the public URL
 
@@ -409,8 +356,8 @@ $K get --raw "$P/alerts" | grep -oE '"alertname":"[^"]+"' | sort | uniq -c
 $K get --raw "$P/query?query=probe_success" | grep -oE '"value":\[[^]]+\]'      # ends in "1"
 ```
 
-Only now is OKE safe to tear down (#13): **keep the sealing-key backup**, it
-is the k3s key now.
+The OKE target was torn down after this check (2026-11-15, #13). **Keep the
+sealing-key backup**: it is the k3s key now.
 
 ## Rebuild proof (#57): same VM, never destroyed
 
@@ -462,3 +409,97 @@ The host key stays the same, since the VM is not replaced, so SSH does not warn.
 | A PR that removes an Ingress fails `validate` with "no Ingress" | The gitops CI expects one in every deployed overlay; change the rule in the same PR (step 7). |
 | Record not created after the old record is gone | k3s external-dns owner id or filter; its logs say why. Never change `txtOwnerId` after deployment. |
 | Backend returns 503 right after step 6 | Expected for seconds while the restored table is swapped in; it recovers on its own. |
+
+## As run: the move from OKE (2026-11-12 and 13)
+
+The first bootstrap moved the site from the OKE target to k3s. These are the
+parts that only the move needed, kept as the record. OKE was destroyed on
+2026-11-15 (#13), so none of this can be run again; a rebuild skips all of it.
+
+### Step 1 extra: the OKE tunnel
+
+Only for the move from OKE (not for a rebuild): OKE is the source of the keys
+and the data, so open its tunnel too, in a third terminal, from this repo's
+root: `scripts/oke-tunnel.sh`.
+
+### Step 4 extra: k3s's external-dns must change nothing
+
+**While another cluster still owns the DNS record** (the move from OKE only):
+k3s's external-dns sees the same hostname. It must not change anything, and
+public DNS must still point at the other cluster:
+
+```bash
+$K -n external-dns logs deploy/external-dns --since=10m | grep -E 'action=' | sed -E 's/ zone=[0-9a-f]+//'
+# prints nothing: no CREATE, UPDATE or DELETE ("All records are already up to date" each minute)
+D=$(curl -s -H 'accept: application/dns-json' 'https://1.1.1.1/dns-query?name=demo.sandeeprn.in&type=A' \
+  | grep -oE '"data":"[^"]+"' | cut -d'"' -f4)
+[ "$D" = "$IP" ] && echo "DNS: the k3s node" || echo "DNS: not the k3s node (${D:+some other address}${D:-no record})"
+```
+
+### Step 6 extra: a fresh backup on OKE
+
+**A fresh backup on the source cluster**, so that no link is lost (ADR 0007
+accepts up to a day; this makes it minutes). For the move from OKE
+(`KO="kubectl --kubeconfig $HOME/.kube/oke-demo.kubeconfig"`):
+
+```bash
+$KO -n link-shortener get cronjob postgres-backup \
+  -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[?(@.name=="upload")].env[?(@.name=="BACKUP_CLUSTER")].value}{"\n"}'   # oke
+J=postgres-backup-manual-$(date -u +%H%M)
+$KO -n link-shortener create job --from=cronjob/postgres-backup "$J"
+$KO -n link-shortener wait job/"$J" --for=condition=complete --timeout=400s
+$KO -n link-shortener logs job/"$J" -c upload | tail -1     # uploaded link-shortener/oke/<timestamp>.pgc
+```
+
+### Step 7: the DNS switch
+
+A short gap is acceptable (ADR 0022). The order matters: external-dns on each
+cluster owns its record by a TXT owner id and will not overwrite a record it
+does not own, so the old cluster must let go first.
+
+1. In the gitops repo, a PR removes the Ingress from the old cluster's overlay
+   (gitops PR #59). The gitops CI required an Ingress in every deployed
+   overlay; the same PR changed that rule to require **no** Ingress in
+   `overlays/oke`, so two clusters can never claim the hostname again.
+   **Merging the PR is the switch.** Before merging: both tunnels up, CI green,
+   both external-dns logging "All records are already up to date".
+2. After the merge, the old cluster's ArgoCD prunes the Ingress and its
+   external-dns (`--policy=sync`) deletes the A record and its TXT owner record
+   (`edns-a-demo.sandeeprn.in`). If ArgoCD is no longer healthy there, delete
+   both records in Cloudflare by hand (ADR 0020).
+3. k3s's external-dns creates its own records from the k3s Ingress status.
+   Watch (the `sed` removes the zone id):
+
+   ```bash
+   $K -n external-dns logs deploy/external-dns --since=10m | grep -E 'action=' | sed -E 's/ zone=[0-9a-f]+//'
+   # action=CREATE record=demo.sandeeprn.in ... type=A, and the TXT record
+   ```
+
+4. Public DNS equals the node's public IP: the DNS-over-HTTPS lookup from
+   "Step 4 extra" above prints `DNS: the k3s node`. (`dig` is not installed on the laptop.)
+
+First run: merged 22:10:14 UTC, OKE deleted its records 22:13:00, k3s created
+its own 22:13:25, so the record was absent for 25 seconds. The record's TTL is
+300 seconds; resolvers may keep the old answer that long.
+
+### The OKE teardown (2026-11-15, #13)
+
+Run after step 8 passed and the sealing-key backup was kept. Two things to
+know for any managed node pool:
+
+- **Deleting an OKE node pool waits on PodDisruptionBudgets.** The drain
+  could not evict the pods of `backend` and Traefik (each budget wants one
+  pod up), and OKE's default is a 60-minute grace period with **no forced
+  delete afterwards**: the delete failed after 60 minutes. Delete the budgets
+  first, or force the delete:
+
+  ```bash
+  oci ce node-pool delete --node-pool-id <node-pool-ocid> \
+    --override-eviction-grace-duration PT0M \
+    --is-force-deletion-after-override-grace-duration true
+  ```
+
+- **State created by Kubernetes is outside Terraform.** Look for volumes and
+  load balancers the cluster created, while it still runs, or they keep
+  billing after `terraform destroy` (inventory afterwards: the k3s node, its
+  boot volume and its VCN only).

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Check the public URL from outside, the way a visitor reaches it (demo #89,
 # ADR 0020). One function per check, a PASS/FAIL line each, and a non-zero
-# exit if anything failed. Run it from the laptop after each cutover step.
+# exit if anything failed. Run it from the laptop after a change to the edge.
 #
 # Usage:  scripts/verify-public-url.sh --staging|--production [options]
 #
@@ -13,8 +13,6 @@
 #                   changed header fails the run instead of passing as a skip.
 #   --hsts          accepted and ignored (the check is already the default);
 #                   kept so older runbook commands still work
-#   --cutover       also check that no LoadBalancer Service remains for the app
-#                   (needs kubectl and the tunnel from scripts/oke-tunnel.sh)
 #   --code CODE     an existing short code to test the redirect with, when no
 #                   token is available to create one
 #   --no-burst      skip the rate-limit burst (it trips the limit for a few
@@ -27,17 +25,14 @@
 #                        (it is passed to curl through stdin), never stored.
 #         HSTS_MAX_AGE   expected max-age in seconds (default 15552000, 180 days)
 #         RESOLVER       public DNS resolver to ask (default 1.1.1.1)
-#         KUBECONFIG     for --cutover (default ~/.kube/oke-demo.kubeconfig)
 # Needs:  bash, curl (7.66+ for --parallel), openssl, timeout (GNU coreutils),
-#         nslookup or dig;
-#         kubectl for --cutover.
+#         nslookup or dig.
 #
 # Checks that create things: the valid-token check creates ONE link to
 # https://example.com/... (recorded as created by the token's name). The burst
 # sends many cheap GET /healthz requests and expects at least one 429. The
-# limit is shared by all clients on OKE (demo #97), so there do not run this
-# while the external probe or a load test depends on the site. On k3s it is
-# per client (ADR 0022): only your own address is limited.
+# limit is per client (ADR 0022), so only your own address is limited. (On the
+# retired OKE target it was shared by all clients, demo #97.)
 #
 # Output masks IPv4 addresses. Exit codes: 0 all checks passed (skips are
 # listed), 1 at least one failed, 2 bad usage.
@@ -48,7 +43,7 @@ HSTS_MAX_AGE="${HSTS_MAX_AGE:-15552000}"
 RESOLVER="${RESOLVER:-1.1.1.1}"
 BURST_REQUESTS=600
 BURST_PARALLEL=150
-MODE="" DO_HSTS=1 DO_CUTOVER=0 DO_BURST=1 CODE=""
+MODE="" DO_HSTS=1 DO_BURST=1 CODE=""
 
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 2; }
 usage() { sed -n '2,/^set -uo/p' "$0" | sed -e '$d' -e 's/^# \{0,1\}//'; }
@@ -60,7 +55,6 @@ while [ $# -gt 0 ]; do
     # not removed so they do not die with "unknown option". Last flag wins.
     --hsts) DO_HSTS=1 ;;
     --no-hsts) DO_HSTS=0 ;;
-    --cutover) DO_CUTOVER=1 ;;
     --no-burst) DO_BURST=0 ;;
     --code) [ $# -ge 2 ] || die "--code needs a value"; CODE="$2"; shift ;;
     --host) [ $# -ge 2 ] || die "--host needs a value"; HOST="$2"; shift ;;
@@ -268,14 +262,6 @@ check_recovers() {
   DETAIL="still $s 20s after the burst"; return 1
 }
 
-check_no_app_loadbalancer() {
-  local kc="${KUBECONFIG:-$HOME/.kube/oke-demo.kubeconfig}" types
-  command -v kubectl >/dev/null 2>&1 || { DETAIL="kubectl not found"; return 1; }
-  types=$(kubectl --kubeconfig "$kc" --request-timeout=60s -n link-shortener get svc \
-    -o jsonpath='{range .items[*]}{.spec.type}{"\n"}{end}' 2>&1) || { DETAIL="cannot read Services (is the tunnel up?)"; return 1; }
-  if grep -qx LoadBalancer <<<"$types"; then DETAIL="a LoadBalancer Service still exists in link-shortener"; return 1; fi
-}
-
 printf 'Verifying https://%s (%s certificate)\n' "$HOST" "$MODE"
 run_check "DNS: public A records only"                    check_dns
 run_check "DNS: not proxied by Cloudflare"                check_not_proxied
@@ -290,12 +276,7 @@ run_check "Create without a token gets 401"               check_create_no_token
 run_check "Create with a wrong token gets 401"            check_create_wrong_token
 run_check "Create with a valid token gets 201"            check_create_valid_token
 run_check "Redirect works with no token"                  check_redirect_no_token
-if [ "$DO_CUTOVER" = 1 ]; then
-  run_check "No LoadBalancer Service for the app"         check_no_app_loadbalancer
-else
-  skip_check "No LoadBalancer Service for the app" "cutover step 2 only; pass --cutover"
-fi
-# Last: it trips the shared rate limit for a few seconds.
+# Last: it trips this client's rate limit for a few seconds.
 if [ "$DO_BURST" = 1 ]; then
   run_check "A burst gets 429"                            check_burst
   run_check "The site recovers after the burst"           check_recovers

@@ -41,8 +41,8 @@ resource "oci_objectstorage_object_lifecycle_policy" "pg_backups" {
   depends_on = [oci_identity_policy.objectstorage_lifecycle]
 }
 
-# Every instance in the project compartment: the OKE workers now, the k3s node
-# later. The compartment holds nothing else.
+# Every instance in the project compartment: the k3s node (and, until 2026-11-15,
+# the OKE workers). The compartment holds nothing else.
 resource "oci_identity_dynamic_group" "cluster_nodes" {
   compartment_id = var.tenancy_ocid
   name           = "oci-k8s-gitops-demo-nodes"

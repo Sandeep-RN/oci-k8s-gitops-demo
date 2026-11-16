@@ -10,8 +10,8 @@ through an SSH tunnel:
 laptop 127.0.0.1:16443 ──ssh (22)──► node 127.0.0.1:6443 (k3s API)
 ```
 
-Port 16443 on the laptop keeps the k3s tunnel apart from the OKE tunnel
-(`scripts/oke-tunnel.sh`, 6443), so both can run during the move.
+Port 16443 on the laptop (not the usual 6443) keeps the k3s tunnel apart from
+anything else listening on the Kubernetes port.
 
 ## Open the tunnel
 
@@ -53,7 +53,7 @@ be pasted into an issue. Exit code 1 if any check failed.
 | node-ready, k3s-version | Ready, on the pinned k3s version |
 | pod-dns-internet | a throwaway pod resolves cluster DNS and reaches the internet, then is deleted |
 
-The A1 retry script has an offline test: `scripts/tests/a1-wait-and-apply.test.sh`.
+The A1 retry script (kept as history, see its header) has an offline test: `scripts/tests/a1-wait-and-apply.test.sh`.
 CI runs it on every pull request (`.github/workflows/checks.yml`).
 
 ## Rotate the SSH key

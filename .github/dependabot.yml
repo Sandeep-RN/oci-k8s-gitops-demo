@@ -34,8 +34,8 @@ updates:
 
   # Provider (oracle/oci) and module versions. One entry for three roots, so the
   # same dependency is updated in all of them in a single PR and the three lock
-  # files cannot drift apart. terraform/oke is left out on purpose: issue #13
-  # destroys it before 2026-11-15. Add it back only if that plan changes.
+  # files cannot drift apart. (terraform/oke was left out on purpose and was
+  # removed after its teardown on 2026-11-15, #182.)
   - package-ecosystem: "terraform"
     directories:
       - "/terraform/shared"

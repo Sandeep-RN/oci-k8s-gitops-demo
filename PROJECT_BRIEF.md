@@ -2,7 +2,7 @@
 
 The single source of facts about this project for anything written about it
 somewhere else: a resume, a portfolio page, a profile, a post, an interview
-answer. **Last verified: 2026-11-14.**
+answer. **Last verified: 2026-11-14** (the OKE status and "What changes next" updated 2026-11-16).
 
 ## How to use this file
 
@@ -15,8 +15,8 @@ For a person, or for an AI assistant working in another project:
 3. **Do not claim what the "Not done" section lists.** Saying the limits out
    loud is part of how this project is presented.
 4. **Prefer the ready-made text** in "Ready to use" to writing new claims.
-5. **Check the date above.** Two items are still open (the OKE teardown and the
-   rebuild proof). "What changes next" at the end says which lines to update
+5. **Check the date above.** Two items are still open (the Cost Analysis after the OKE
+   teardown, and the rebuild proof). "What changes next" at the end says which lines to update
    when they close. If this file is more than a month old, read the
    [README](README.md) first.
 6. **Ask the owner** for anything that is missing. Do not fill a gap by guessing.
@@ -49,10 +49,8 @@ record was absent for 25 seconds.
 ## Status
 
 Live at <https://demo.sandeeprn.in> on a single-node k3s cluster since
-2026-11-12. The OKE target served the site until 2026-11-12. It still exists
-with no public way in; its teardown is issue
-[#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13) (due
-2026-11-15).
+2026-11-12. The OKE target served the site until 2026-11-12 and was destroyed
+on 2026-11-15 (issue [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)).
 
 ## Facts
 
@@ -317,5 +315,5 @@ Update this file, then everything written from it, when these close:
 
 | When | Change |
 |---|---|
-| OKE teardown done ([#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)) | "Status": replace the OKE sentence with the teardown date. "Facts", Cost: add the first Cost Analysis result after the teardown |
+| Cost Analysis after the OKE teardown ([#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13), destroyed 2026-11-15) | "Facts", Cost: add the first Cost Analysis result after the teardown. ("Status" already carries the teardown date.) |
 | Rebuild proof done ([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57)) | "Not done": remove the rebuild line. "Results": add the measured rebuild time. Portfolio card: `status: "done"` |

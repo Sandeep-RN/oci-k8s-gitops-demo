@@ -157,7 +157,7 @@ still redirects.
 - Backups are logical (`pg_dump`). There is no point-in-time recovery; see
   ADR 0007 "At scale".
 - The bucket has `prevent_destroy`, and `terraform/shared` is separate from
-  the cluster roots: tearing down OKE (#13) leaves the backups in place.
+  the cluster roots: tearing down OKE (#13, 2026-11-15) left the backups in place.
 - The app connects as its own non-superuser role, `linkshortener_app` (ADR 0018).
   Backups and restores use the admin role (`POSTGRES_USER`); the restore
   switches to the app role for the objects it creates.

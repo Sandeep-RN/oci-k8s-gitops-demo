@@ -74,8 +74,7 @@ without a token, a link created with `LINK_TOKEN` and followed, and the rate
 limit. The HSTS check is on by default (`--no-hsts` skips it). It prints no addresses. Do not paste the token into a command line (the
 script reads the environment). The rate-limit check sends a burst of 600
 requests, so your own address gets 429 for a few seconds; do not run it during
-a load test. The script's `--cutover` flag checked the 2026-10-31 OKE cutover
-and reads the OKE kubeconfig by default: do not use it on k3s.
+a load test.
 
 ## Debug: the site does not answer or the certificate is wrong
 
@@ -300,13 +299,11 @@ everything a leaked token made:
 **If a token leaks:** revoke it first, then look at what it created. Rotating
 is the same as revoking and adding under a new name.
 
-## OKE teardown: what must NOT be touched
+## What k3s shares with the retired OKE target: do not touch
 
-The OKE target served the site until 2026-11-12. It still exists with no
-public way in; its teardown is issue #13 (due 2026-11-15).
-
-k3s has taken over the hostname and shares several things with OKE. Removing
-any of them takes the live site down or breaks it later:
+The OKE target served the site until 2026-11-12 and was destroyed on 2026-11-15
+(issue #13). k3s took over the hostname and uses several things OKE used.
+Removing any of them takes the live site down or breaks it later:
 
 - **Keep both Cloudflare tokens** (`cert-manager-oke` and
   `external-dns oci-demo`). k3s uses the same two sealed tokens
@@ -321,5 +318,5 @@ any of them takes the live site down or breaks it later:
   points at the hostname, which k3s serves.
 - **Keep the Sealed Secrets key backup.** It is the k3s key (ADR 0022).
 
-The teardown checklist itself is issue
+The teardown checklist was issue
 [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13).

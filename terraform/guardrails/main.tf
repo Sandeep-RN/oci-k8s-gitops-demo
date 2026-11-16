@@ -29,9 +29,9 @@ locals {
     "set compute-memory quota standard-a1-memory-count to ${var.a1_memory_gbs_quota} in tenancy",
     "set compute-memory quota standard-a1-memory-regional-count to ${var.a1_memory_gbs_quota} in tenancy",
 
-    # OKE workers (ADR 0015) until the teardown (#13); 0 afterwards.
-    "set compute-core quota standard-e5-core-count to ${var.e5_ocpus_quota} in tenancy",
-    "set compute-memory quota standard-e5-memory-count to ${var.e5_memory_gbs_quota} in tenancy",
+    # No E5 (or any other x86) statement: the family-wide zero above keeps them
+    # at 0. They were raised only for the OKE workers (ADR 0015) until its
+    # teardown on 2026-11-15 (#13).
 
     # Block storage: set quota by quota. A family-wide zero would also zero
     # `volume-count` and block every new volume, the k3s boot volume included.
@@ -78,7 +78,7 @@ resource "oci_budget_budget" "tenancy_monthly" {
   }
 }
 
-# The target is 0/month, so any actual spend is unexpected once OKE is gone.
+# The target is 0/month, so any actual spend is unexpected.
 resource "oci_budget_alert_rule" "early_warning" {
   budget_id      = oci_budget_budget.tenancy_monthly.id
   display_name   = "early-warning-actual"
@@ -87,7 +87,7 @@ resource "oci_budget_alert_rule" "early_warning" {
   threshold_type = "ABSOLUTE"
   threshold      = var.budget_early_warning_amount
   recipients     = var.budget_alert_recipients
-  message        = "oci-k8s-gitops-demo: actual spend this month passed the early-warning amount. Expected only during the OKE overlap. Check Cost Analysis by service. Runbook: docs/runbooks/cost-guardrails.md"
+  message        = "oci-k8s-gitops-demo: actual spend this month passed the early-warning amount. Not expected: the target is 0/month. Check Cost Analysis by service. Runbook: docs/runbooks/cost-guardrails.md"
 }
 
 resource "oci_budget_alert_rule" "tolerance_actual" {

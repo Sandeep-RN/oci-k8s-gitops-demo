@@ -83,7 +83,7 @@ else
   rm -f "$TF_ERR"
 fi
 if ! [[ "$NODE_IP" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]]; then
-  printf 'no node IP. Session expired: oci session refresh --profile oke-demo. Provider missing: terraform -chdir=terraform/k3s init -backend-config=../backend.hcl. Or set K3S_NODE_IP.\n' >&2
+  printf 'no node IP: if Terraform printed an error above, see it. Possible causes: expired session (oci session refresh --profile oke-demo); backend or provider not initialised (terraform -chdir=terraform/k3s init -backend-config=../backend.hcl). Or set K3S_NODE_IP.\n' >&2
   exit 2
 fi
 
