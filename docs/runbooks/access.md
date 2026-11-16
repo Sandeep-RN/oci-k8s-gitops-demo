@@ -41,7 +41,7 @@ scripts/k3s-tunnel.sh          # fetches ~/.kube/k3s.kubeconfig, holds the tunne
 In a second terminal:
 
 ```bash
-K="kubectl --kubeconfig $HOME/.kube/k3s.kubeconfig"     # k3s, NOT the OKE kubeconfig
+K="kubectl --kubeconfig $HOME/.kube/k3s.kubeconfig"     # the k3s kubeconfig, not kubectl's default context
 $K get nodes                     # k3s-node-vnic   Ready
 ```
 

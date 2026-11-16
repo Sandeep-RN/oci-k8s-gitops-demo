@@ -41,7 +41,7 @@ list:
 
 ```bash
 # After scripts/k3s-tunnel.sh is running in another terminal:
-K="kubectl --kubeconfig $HOME/.kube/k3s.kubeconfig"     # k3s, NOT the OKE kubeconfig
+K="kubectl --kubeconfig $HOME/.kube/k3s.kubeconfig"     # the k3s kubeconfig, not kubectl's default context
 ```
 
 The laptop's default kubectl context is a different cluster, so every command

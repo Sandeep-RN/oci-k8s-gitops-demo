@@ -36,7 +36,7 @@ All commands assume the k3s tunnel is running (`scripts/k3s-tunnel.sh`, see
 [k3s-access](k3s-access.md)) and use:
 
 ```bash
-K="kubectl --kubeconfig $HOME/.kube/k3s.kubeconfig"     # k3s, NOT the OKE kubeconfig
+K="kubectl --kubeconfig $HOME/.kube/k3s.kubeconfig"     # the k3s kubeconfig, not kubectl's default context
 ```
 
 kubectl's default context on the laptop is a different cluster, so every
