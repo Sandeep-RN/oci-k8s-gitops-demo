@@ -12,8 +12,10 @@ Issues: #8 (first bootstrap), #57 (rebuild proof).
 > note): the `jsonpath` check of `BACKUP_CLUSTER` on the source cluster's
 > CronJob (step 6), and the two Prometheus queries through `get --raw`
 > (alerts and `probe_success`, step 8). The checks that did run used a
-> different spelling of the same queries. **The rebuild section (#57) has not
-> been run yet.**
+> different spelling of the same queries. **The rebuild section (#57) was run
+> on 2026-11-20 and 21** and corrected afterwards (see
+> [the evidence](../evidence/rebuild-proof-2026-11-21.md)); its commands were
+> the ones above, with the changes written into that section.
 >
 > What had to change against the draft:
 > - **Step 1:** pull both `main` checkouts first; open the OKE tunnel as well
@@ -361,15 +363,21 @@ sealing-key backup**: it is the k3s key now.
 
 ## Rebuild proof (#57): same VM, never destroyed
 
-**Not run yet.** Proves that the cluster can be rebuilt from Git, the key
-backup and the data backup. The VM, its boot volume and its IP stay
-(`prevent_destroy`; ADR 0001, 0022).
+**Run on 2026-11-20 and 21** ([evidence](../evidence/rebuild-proof-2026-11-21.md)):
+about 21 minutes from the end of the uninstall to the data restored. Proves
+that the cluster can be rebuilt from Git, the key backup and the data backup.
+The VM, its boot volume and its IP stay (`prevent_destroy`; ADR 0001, 0022), so
+this does not prove a rebuild of the VM itself.
 
 1. Take a fresh sealing-key backup **from k3s** (the minimal export in
    [sealed-secrets](sealed-secrets.md)) and a manual database backup (the Job
-   at the end of step 6). Store the key backup; check that the backup object is
-   listed under `link-shortener/k3s/`. Do not skip: step 2 deletes both from
-   the node.
+   at the end of step 6). Store the key backup, then **read it back out of the
+   password manager** and check it: `kubectl apply --dry-run=server -f` on the
+   copy must say `unchanged`. Check that the backup object is listed under
+   `link-shortener/k3s/`, and that the rows in the dump (`pg_restore
+   --data-only` as in step 6, no restore) equal the rows in the live table.
+   Note the time the uninstall starts. Do not skip any of this: step 2 deletes
+   the key and the data from the node.
 2. Remove k3s on the node (this deletes the cluster state, the Postgres volume
    and ArgoCD):
 
@@ -382,16 +390,28 @@ backup and the data backup. The VM, its boot volume and its IP stay
 
    ```bash
    ssh -i ~/.ssh/k3s-node -o LogLevel=ERROR ubuntu@$IP 'sudo bash /usr/local/sbin/bootstrap-node.sh'
+   # The new cluster has a new CA and client certificate: fetch the kubeconfig
+   # again. A tunnel that is already open keeps working (--no-tunnel).
+   scripts/k3s-tunnel.sh --no-tunnel
+   # Wait about 2 minutes after k3s starts: sooner, pod-dns-internet fails.
    scripts/k3s-verify.sh            # 9/9 PASS
    ```
 
 4. Repeat steps 1 to 6 above (tunnel, keys, ArgoCD, apps and certificate, edge
-   test, data). Step 7 is skipped: the record never left, so external-dns keeps
-   it. Then step 8. The rebuild orders a new production certificate (the
-   weekly limit in step 4 applies).
-5. `terraform plan` from a clean checkout shows no changes. Record the times
-   (uninstall to first healthy app, to restored data) in the PR; they are the
-   evidence.
+   test, data), with three changes. Step 1: the tunnel is already open, and the
+   kubeconfig was fetched in rebuild step 3. Step 2: restore the key from the
+   password-manager copy; the controller then decrypting all SealedSecrets is
+   the proof that the copy was right. Step 6: restore the backup **by name**
+   (the one taken in rebuild step 1), not "the newest": the nightly job at
+   03:00 IST can write a newer, almost empty object during the rebuild, and
+   `PostgresBackupMissing` fires until a manual backup has run on the rebuilt
+   cluster, so end step 6 with that backup. Step 7 is skipped: the record never
+   left, so external-dns keeps it. Then step 8. The rebuild orders a new
+   production certificate (the weekly limit in step 4 applies).
+5. `terraform plan` shows no changes (compare with the plan taken before the
+   uninstall). Record the times (uninstall to first healthy app, to restored
+   data) in the PR; they are the evidence. On 2026-11-20 they were 17 min 57 s
+   and 20 min 36 s.
 
 The host key stays the same, since the VM is not replaced, so SSH does not warn.
 
@@ -409,6 +429,9 @@ The host key stays the same, since the VM is not replaced, so SSH does not warn.
 | A PR that removes an Ingress fails `validate` with "no Ingress" | The gitops CI expects one in every deployed overlay; change the rule in the same PR (step 7). |
 | Record not created after the old record is gone | k3s external-dns owner id or filter; its logs say why. Never change `txtOwnerId` after deployment. |
 | Backend returns 503 right after step 6 | Expected for seconds while the restored table is swapped in; it recovers on its own. |
+| After a rebuild, `kubectl` says `Unauthorized` or a certificate error | The reinstalled cluster has a new CA and client certificate. Run `scripts/k3s-tunnel.sh --no-tunnel` to fetch the kubeconfig again. |
+| `pod-dns-internet` fails in `k3s-verify.sh` right after a reinstall | It ran too early (CoreDNS and Traefik's service load balancer need about 2 minutes). Run it again. |
+| `PostgresBackupMissing` fires after a rebuild | A new CronJob has no successful run yet. Take the manual backup at the end of step 6. |
 
 ## As run: the move from OKE (2026-11-12 and 13)
 

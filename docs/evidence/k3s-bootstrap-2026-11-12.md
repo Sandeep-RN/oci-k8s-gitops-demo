@@ -123,11 +123,11 @@ The draft was written before the cluster existed. The run found these:
   decrypt on another once the key is restored; a live hostname can move between
   clusters through a reviewed pull request with a gap of seconds; the backup
   restores into a different cluster with every row.
-- Doesn't show: a **rebuild** of this cluster. The runbook's rebuild section is
-  written but not run
+- Doesn't show: a **rebuild** of this cluster. That was run later, on
+  2026-11-20 and 21: [rebuild-proof-2026-11-21.md](rebuild-proof-2026-11-21.md)
   ([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57)). Three
-  commands in the runbook were rewritten after the run and are marked there as
-  not run in their final form.
+  commands in the runbook were rewritten after the first run and are marked
+  there as not run in their final form.
 - Doesn't show: that a second client still gets 200 while another client is
   rate limited. Only the one-client burst was run.
 - Not checked in this run: the nightly backup schedule on k3s (only a manual

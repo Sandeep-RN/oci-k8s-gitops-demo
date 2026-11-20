@@ -15,7 +15,6 @@ k3s (ADR 0022): the restore commands below are the ones run then (step 2 of
 Only the kubeconfig or the certificate path changed for these. Run each once
 on k3s and remove it from this list:
 
-- the minimal export in "Back up the keys" (it ran on OKE on 2026-11-12, and its file was restored on k3s)
 - the seal example with `--cert argocd/clusters/k3s/sealed-secrets-cert.pem` (the same certificate the OKE target used: the keys are the same)
 - `kubeseal --kubeconfig ~/.kube/k3s.kubeconfig --fetch-cert > argocd/clusters/k3s/sealed-secrets-cert.pem` (after a key renewal)
 - `$K -n kube-system delete secret <generated-key-name>`, `$K -n kube-system delete pod -l name=sealed-secrets-controller` and the `wait` after it (restore, only when the controller already ran without the keys)

@@ -64,6 +64,7 @@ The full picture, with the reasons, is in
 | SLO alert on a real outage | A planned 5-minute database outage fired the critical alert to Discord 7.5 minutes after it began; it then resolved | [#53](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/53) |
 | A whole cluster from Git | On a new k3s node, all 10 ArgoCD Applications were Synced and Healthy 3.5 minutes after the root Application was applied (after the key restore and the ArgoCD install) | [evidence](docs/evidence/k3s-bootstrap-2026-11-12.md) |
 | Moving the live site to another cluster | The cutover was one pull request. The DNS record was absent for 25 seconds. All 34 rows restored | [evidence](docs/evidence/k3s-bootstrap-2026-11-12.md) |
+| Deleting the cluster and rebuilding it on the same VM | 20 min 36 s from the end of the uninstall to the data restored: 10 Applications healthy after 17 min 57 s, all 38 rows back, `terraform plan` empty before and after. Includes the time a person needed; the VM itself was not rebuilt | [evidence](docs/evidence/rebuild-proof-2026-11-21.md) |
 | Backup and restore | Nightly dumps. Restore drilled on 2026-10-25 and done for real in the move on 2026-11-12 | [runbook](docs/runbooks/postgres-backup-restore.md) |
 | Image scan gate | Blocked a real HIGH CVE before the image was pushed | [evidence](docs/evidence/oke-final-2026-11-10.md) |
 | Rate limit per client | One client's burst of 600 requests got 282 answers of 429. Not run yet: the check that a second client still gets 200 during the burst | [#115](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/115) |
@@ -108,7 +109,9 @@ Every change of approach is an ADR. The index is
 - **Test write-ups:** [docs/evidence/](docs/evidence/). Node drain
   ([2026-10-24](docs/evidence/oke-drain-2026-10-24.md)), drain, rollout and
   scan gate ([2026-11-08](docs/evidence/oke-final-2026-11-10.md)), k3s bootstrap
-  and DNS switch ([2026-11-12](docs/evidence/k3s-bootstrap-2026-11-12.md)).
+  and DNS switch ([2026-11-12](docs/evidence/k3s-bootstrap-2026-11-12.md)),
+  cluster rebuild on the same VM
+  ([2026-11-21](docs/evidence/rebuild-proof-2026-11-21.md)).
 - **Videos** (silent screen recordings): [node drain, 2:00](https://youtu.be/ypoLkJUmsCI),
   [rollout under traffic, 1:45](https://youtu.be/_CFu4mpSBlg) and
   [OKE live tour (app, ArgoCD, Grafana SLO, alerts), 9:36](https://youtu.be/jkP26YOaopc).
@@ -126,8 +129,13 @@ Every change of approach is an ADR. The index is
   restart is an outage. Multi-node behaviour was shown on OKE, not here.
 - **One PostgreSQL replica on the node's disk.** The recovery point is the last
   nightly backup, so up to 24 hours of data.
-- **The clean rebuild is written but not yet run**
-  ([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57)).
+- **The cluster rebuild was run once, the VM rebuild was not.** The cluster was
+  deleted and rebuilt on the same VM from Git, the key backup and the data
+  backup in 20 min 36 s
+  ([evidence](docs/evidence/rebuild-proof-2026-11-21.md),
+  [#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57)). A
+  replaced VM would take the Terraform and cloud-init path, which is untested
+  (`prevent_destroy`).
 - **Nothing pages if the monitoring stack itself dies.** There is no dead man's
   switch, and the outside probe runs only every few hours.
 - **Not built:** NetworkPolicies, log aggregation, autoscaling, a load test.

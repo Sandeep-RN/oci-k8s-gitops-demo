@@ -17,7 +17,7 @@ shaped this way. Decisions link to their ADRs in [`docs/adr/`](adr/).
 | **App** | FastAPI link shortener on PostgreSQL: 302 redirects, fail-fast 503s during a database outage, request metrics; landing page at `/` and API page at `/docs`, both served by the backend; non-root multi-arch image | No separate frontend (`frontend/` in the app repo is an empty placeholder) |
 | **CI** | Lint, test (with real Postgres), Trivy scan, amd64+arm64 build, push to GHCR, auto-merging tag-bump PR; gitleaks full-history scan in all three repos | |
 | **GitOps** | ArgoCD v3.5.6 app of apps `root-k3s`, self-managed, Kustomize base and overlays, Sealed Secrets, `validate` check (kubeconform, Helm render, promtool, amtool) | |
-| **Cluster** | k3s v1.36.5+k3s1 on one A1 VM (2 OCPU / 12 GB), Terraform-managed, `prevent_destroy` | Rebuild proof on the same VM ([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57)); HPA; NetworkPolicies |
+| **Cluster** | k3s v1.36.5+k3s1 on one A1 VM (2 OCPU / 12 GB), Terraform-managed, `prevent_destroy` | HPA; NetworkPolicies. The cluster rebuild was run ([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57)); a VM rebuild was not |
 | **Edge** | No load balancer: node public IP, k3s's Traefik, real client IPs, per-client rate limit, cert-manager (Let's Encrypt production), external-dns, HSTS, token-gated link creation | |
 | **Ops** | Prometheus, Grafana, Alertmanager; redirect SLO with burn-rate alerts to Discord; in-cluster and external probes; nightly backups with tested restores; quota cap and budget alerts; runbooks | k6 load job; log stack; dead man's switch for the monitoring stack |
 | **OKE target** | Served the site until 2026-11-12; drain, PDB and rollout evidence captured | Destroyed on 2026-11-15 ([#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)), quotas tightened the same day; the next-day Cost Analysis is the proof the bill stopped |
@@ -159,8 +159,9 @@ there. The legacy metadata endpoint (IMDS v1) is disabled.
 may never come back (ADR 0001). Terraform also ignores changes to the image and
 to the cloud-init template, so a new Oracle image or a template edit can never
 plan a replacement. The rebuild proof
-([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57)) keeps the
-VM and rebuilds only the cluster on it
+([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57), run on
+2026-11-20/21, [evidence](evidence/rebuild-proof-2026-11-21.md)) kept the VM
+and rebuilt only the cluster on it
 ([ADR 0022](adr/0022-moving-the-demo-from-oke-to-k3s.md)).
 
 **What one node cannot do.**
@@ -448,8 +449,11 @@ The OKE target served the site until 2026-11-12 and was destroyed on
   node pool delete had to be forced because pod disruption budgets blocked the
   drain ([how](runbooks/k3s-bootstrap.md#the-oke-teardown-2026-11-15-13)).
 
-Still open: the rebuild proof on the same VM
-([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57)).
+- **2026-11-20/21, rebuild proof:** the cluster was deleted and rebuilt on the
+  same VM from Git, the key backup and the data backup, in 20 min 36 s from the
+  end of the uninstall to the data restored
+  ([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57),
+  [evidence](evidence/rebuild-proof-2026-11-21.md)).
 
 ## 12. Decision index
 

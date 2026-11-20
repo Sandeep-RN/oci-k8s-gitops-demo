@@ -93,6 +93,7 @@ Every row has a source. The README has the same table; keep the two equal.
 | SLO alert on a real outage | A planned 5-minute database outage fired the critical alert to Discord 7.5 minutes after it began; it then resolved | [#53](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/53) |
 | A whole cluster from Git | On a new node, 10 ArgoCD Applications were Synced and Healthy 3.5 minutes after the root Application was applied (after the key restore and the ArgoCD install) | [evidence 2026-11-12](docs/evidence/k3s-bootstrap-2026-11-12.md) |
 | Moving the live site to another cluster | The cutover was one pull request. DNS record absent for 25 seconds. All 34 rows restored | same |
+| Deleting the cluster and rebuilding it on the same VM | 20 min 36 s from the end of the uninstall to the data restored: 10 Applications healthy after 17 min 57 s, all 38 rows back, `terraform plan` empty before and after. Includes the time a person needed; the VM itself was not rebuilt | [evidence 2026-11-21](docs/evidence/rebuild-proof-2026-11-21.md) |
 | Backup and restore | Nightly dumps. Restored twice: a drill on 2026-10-25, and for real in the move on 2026-11-12 | [runbook](docs/runbooks/postgres-backup-restore.md) |
 | Image scan gate | Blocked a real HIGH CVE before the image was pushed | [evidence 2026-11-08](docs/evidence/oke-final-2026-11-10.md) |
 | Rate limit per client | One client's burst of 600 requests got 282 answers of 429. That Traefik sees each client's own address was measured with a packet capture. Not run: the check that a second client still gets 200 during the burst | [#115](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/115), [ADR 0022](docs/adr/0022-moving-the-demo-from-oke-to-k3s.md) |
@@ -110,6 +111,10 @@ How to quote these honestly:
   figure: a resolver could keep the old address for up to 5 minutes, and what
   users saw was not measured. Before the one pull request came a key restore,
   two manual applies and a data restore (about 35 minutes).
+- **20 min 36 s** is one measured rebuild of the cluster, counted from the end
+  of the uninstall, with a person pasting commands and a backup taken minutes
+  before. Say "rebuilt in about 21 minutes in one run", not "an RTO of 21
+  minutes". The site was fully down for about the first 18 of them.
 - In the alert test the page arrived **after** the 5-minute outage had ended
   (outage 13:07:11 to 13:12:49, page 13:14:39). Say "paged 7.5 minutes after
   the outage began", never "detected the outage in real time".
@@ -184,8 +189,9 @@ Each one happened. The issue has the detail.
 Do not claim any of these.
 
 - **High availability.** One node. A reboot or an upgrade is an outage.
-- **A rebuild of the k3s cluster.** The runbook section is written, not run
-  ([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57)).
+- **A rebuild of the VM itself.** The cluster was rebuilt on the same VM
+  ([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57)); a
+  replaced VM would take the Terraform and cloud-init path, which is untested.
 - **Load or performance testing.** None. The tests ran at under one request a
   second.
 - **Autoscaling, NetworkPolicies, a log stack, a dead man's switch** for the
@@ -193,7 +199,8 @@ Do not claim any of these.
 - **Terraform plan or apply in CI.** CI runs only offline checks (`fmt`,
   `validate`, `test`, no cloud credentials). `plan` and `apply` are run by
   hand from a laptop.
-- **A measured uptime figure** or a measured recovery time.
+- **A measured uptime figure.** The recovery time was measured once (20 min
+  36 s, from a backup taken minutes earlier); it is not a guarantee.
 - **Database replication.** One replica; up to 24 hours of data can be lost.
 
 The full list, with what would come next: [docs/roadmap.md](docs/roadmap.md).
