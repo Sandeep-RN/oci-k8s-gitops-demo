@@ -137,8 +137,10 @@ the one node. If only the PVC is gone, the StatefulSet starts Postgres on a
 new, empty volume, the app creates an empty table on its first request
 (ADR 0016), and the same `pg_restore --clean --if-exists` command as in A
 restores the data. Losing the node or its disk loses the volume too; then the
-path is the rebuild section of [k3s-bootstrap](k3s-bootstrap.md) (#57,
-written but not run yet), whose step 6 restores the newest backup this way.
+path is the rebuild section of [k3s-bootstrap](k3s-bootstrap.md) (#57, run on
+2026-11-20 and 21), whose step 6 restores a backup this way. Name the object
+to restore: the newest one may be an almost empty dump written by the nightly
+job while the cluster was being rebuilt.
 
 After either case: check with `curl` (access runbook) that an old short link
 still redirects.

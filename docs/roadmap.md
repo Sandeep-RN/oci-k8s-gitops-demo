@@ -1,6 +1,6 @@
 # Known limits and what comes next
 
-As of 2026-11-14 (the OKE rows updated 2026-11-16). This page lists what is still open, what the project does
+As of 2026-11-14 (the OKE rows updated 2026-11-16, the rebuild rows 2026-11-21). This page lists what is still open, what the project does
 not do, what I would do next, and what would change for a real production
 system. It is the other half of the [README](../README.md).
 
@@ -9,8 +9,8 @@ system. It is the other half of the [README](../README.md).
 | Item | Issue | State |
 |---|---|---|
 | Prove the OKE teardown stopped the bill (next-day Cost Analysis); the OKE target was destroyed and the quotas tightened on 2026-11-15 | [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13), [#113](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/113) | Destroyed; open until the Cost Analysis |
-| Rebuild the k3s cluster on the same VM from Git, the key backup and the data backup | [#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57) | Runbook section written, not run |
-| Final README pass and a 3-minute video | [#58](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/58) | After #13 and #57 |
+| Rebuild the k3s cluster on the same VM from Git, the key backup and the data backup | [#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57) | Done 2026-11-20/21: 20 min 36 s from the uninstall to the data restored ([evidence](evidence/rebuild-proof-2026-11-21.md)). The VM itself was not rebuilt |
+| Final README pass and a 3-minute video | [#58](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/58) | #13 and #57 are done |
 | Count the sealing keys after the first renewal on k3s; a second key needs a new backup | [k3s-bootstrap](runbooks/k3s-bootstrap.md), step 2 | After 2026-11-23 |
 | Alerts on k3s for certificate expiry, Traefik 5xx and a full disk (next step 11) | [#140](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/140) | Not started |
 | Live checks on k3s: Prometheus memory, the Traefik ServiceMonitor, volume stats | [#141](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/141) | Not started |
@@ -22,7 +22,7 @@ These are accepted, each for a reason that is written down.
 | Limit | Why it is accepted | ADR |
 |---|---|---|
 | One node. A reboot, a k3s upgrade or a Traefik restart is an outage | The constraint is $0 a month. Multi-node behaviour was shown on OKE | [0001](adr/0001-single-node-k3s-on-always-free-a1.md), [0022](adr/0022-moving-the-demo-from-oke-to-k3s.md) |
-| One PostgreSQL replica on the node's disk. Up to 24 hours of data can be lost. The time to recover is not measured yet | Nightly dumps with a tested restore fit a demo. #57 measures the time | [0007](adr/0007-postgres-statefulset-with-dump-backups.md) |
+| One PostgreSQL replica on the node's disk. Up to 24 hours of data can be lost. Recovering the cluster and its data took 20 min 36 s once, from a backup taken minutes earlier | Nightly dumps with a tested restore fit a demo. Measured in #57 ([evidence](evidence/rebuild-proof-2026-11-21.md)) | [0007](adr/0007-postgres-statefulset-with-dump-backups.md) |
 | The public address is the node's own, sealed into the cluster by hand | The node is never destroyed, so the address does not change in practice | [0022](adr/0022-moving-the-demo-from-oke-to-k3s.md) |
 | If the monitoring stack itself dies, nothing pages | The outside probe still runs, but only every few hours | [0019](adr/0019-in-cluster-synthetic-redirect-probe.md) |
 | Backups use the node's identity, so any pod on the node could add objects to the backup bucket | The identity is write-only: it cannot read, overwrite or delete a backup | [0017](adr/0017-backup-auth-instance-principals-write-only.md) |
