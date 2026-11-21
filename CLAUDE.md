@@ -19,8 +19,10 @@ GitHub Issues on Sandeep-RN/oci-k8s-gitops-demo via the `gh` CLI; this repo trac
 
 ### Tracking work (milestones)
 
-Every task, in any of the three repos, starts from an issue here, in the
-milestone of its phase (Phase 1, 2a, 2b, 3, or "OKE target"). If no issue
+Every task, in any of the four repos, starts from an issue here, in the
+milestone of its phase (Phase 1, 2a, 2b, 3, "OKE target", or "oncall-assistant
+(ADR 0025)" for the second application's platform work; its app work is
+tracked in Sandeep-RN/oncall-assistant). If no issue
 exists, create one before starting. Then:
 
 - PR descriptions close it with the full reference, which works across repos:
