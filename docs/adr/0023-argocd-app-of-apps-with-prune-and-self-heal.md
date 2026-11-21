@@ -69,8 +69,9 @@ Why ArgoCD over Flux, for this project:
   `docs/runbooks/sealed-secrets.md`, gotcha 2). Restart by deleting a pod.
 - ArgoCD's own pods (server, repo server, application controller, Redis,
   ApplicationSet and notifications controllers, Dex) use memory on the one
-  node. They have no requests or limits yet, because `argocd/install` was
-  shared with OKE.
+  node. They had no requests or limits, because `argocd/install` was shared
+  with OKE. Added on 2026-11-21 (gitops PR #75), sized from measured peaks:
+  see [the live checks](../evidence/k3s-live-checks-2026-11-21.md).
 - Only the workload app is fenced by an AppProject. The platform apps
   (cert-manager, external-dns, monitoring, Sealed Secrets and the others)
   still use the unrestricted `default` project.

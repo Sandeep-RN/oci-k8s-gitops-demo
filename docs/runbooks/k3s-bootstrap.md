@@ -6,16 +6,16 @@ Issues: #8 (first bootstrap), #57 (rebuild proof).
 > **Status: steps 1 to 8 were run end to end on 2026-11-12 and 2026-11-13**
 > (steps 1 to 6 on the afternoon of 2026-11-12, the DNS switch and public check
 > at about 03:40 IST on 2026-11-13). `https://demo.sandeeprn.in` is served by
-> k3s since then. Every command in steps 1 to 8 is written as it was run,
-> except these three, which were rewritten from commands that did run and
-> have **not been run in this exact form** (run them once and delete this
-> note): the `jsonpath` check of `BACKUP_CLUSTER` on the source cluster's
-> CronJob (step 6), and the two Prometheus queries through `get --raw`
-> (alerts and `probe_success`, step 8). The checks that did run used a
-> different spelling of the same queries. **The rebuild section (#57) was run
-> on 2026-11-20 and 21** and corrected afterwards (see
-> [the evidence](../evidence/rebuild-proof-2026-11-21.md)); its commands were
-> the ones above, with the changes written into that section.
+> k3s since then. Every command in steps 1 to 8 is written as it was run.
+> Three of them were first rewritten from commands that had run in another
+> spelling: the `jsonpath` check of `BACKUP_CLUSTER` on the CronJob (step 6)
+> and the two Prometheus queries through `get --raw` (alerts and
+> `probe_success`, step 8). They have since been run against k3s (the
+> `jsonpath` one with the k3s kubeconfig in place of the source cluster's) and
+> gave the expected output (`k3s`; only `Watchdog`; a value ending in `1`), see
+> [the live checks](../evidence/k3s-live-checks-2026-11-21.md).
+> **The rebuild section (#57) was run on 2026-11-20 and 21** and corrected
+> afterwards (see [the evidence](../evidence/rebuild-proof-2026-11-21.md)).
 >
 > What had to change against the draft:
 > - **Step 1:** pull both `main` checkouts first; open the OKE tunnel as well

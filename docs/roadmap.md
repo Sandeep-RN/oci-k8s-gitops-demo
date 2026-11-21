@@ -13,7 +13,7 @@ system. It is the other half of the [README](../README.md).
 | Final README pass and a 3-minute video | [#58](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/58) | #13 and #57 are done |
 | Count the sealing keys after the first renewal on k3s; a second key needs a new backup | [k3s-bootstrap](runbooks/k3s-bootstrap.md), step 2 | After 2026-11-23 |
 | Alerts on k3s for certificate expiry, Traefik 5xx and a full disk (next step 11) | [#140](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/140) | Not started |
-| Live checks on k3s: Prometheus memory, the Traefik ServiceMonitor, volume stats | [#141](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/141) | Not started |
+| Live checks on k3s: Prometheus memory, the Traefik ServiceMonitor, volume stats | [#141](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/141) | Done 2026-11-21: all under their estimates, the target is up, and volume stats report the node's disk ([evidence](evidence/k3s-live-checks-2026-11-21.md)) |
 
 ## Known limits
 
@@ -64,14 +64,16 @@ the others are not started.
 7. NetworkPolicies: default deny in the app's namespace, then allow Traefik,
    Prometheus, the probe and the database paths. Block the cloud metadata
    address for every pod except the backup job. k3s ships a NetworkPolicy
-   controller; it has not been tried on this node.
+   controller and nothing disables it on this node, but enforcement has not
+   been tested ([evidence](evidence/k3s-live-checks-2026-11-21.md)).
 8. Pod Security labels on the namespaces. The workloads already run as
    non-root, read-only, with all capabilities dropped.
 9. A dead man's switch: send the `Watchdog` alert to a heartbeat service.
 10. A `preStop` sleep and a shutdown test for the backend. A terminating pod
     can still get a request for a moment; one 502 was seen on 2026-11-02.
 11. Alerts for certificate expiry and for a full disk on the `local-path`
-    volumes.
+    volumes. The volumes report the node's filesystem, not their own size, so
+    the disk alert is a node-filesystem alert.
 12. Scan the pushed multi-arch image, sign it, and attach an SBOM.
 13. A GitHub App instead of a personal access token for the tag-bump pull
     request.

@@ -91,9 +91,12 @@ Rate limit: per client on k3s. Traefik sees the real client address
 (`externalTrafficPolicy: Local`, ADR 0022), and each address gets 20 requests
 a second with a burst of 40, so a busy loop locks out only that address. A
 429 is not an outage. Proven: a burst of 600 requests from one client got
-282 x 429. Not run yet: the check that a second client still gets 200 during
-that burst. (On OKE the limit was a shared flood guard of 5 requests a second
-with a burst of 10, because the load balancer hid client addresses, #97.)
+282 x 429. Also proven, on 2026-11-21: while a laptop got 1410 x 429 over a
+60 second flood, a phone on mobile data still got the normal page on every
+reload ([evidence](../evidence/k3s-live-checks-2026-11-21.md); the phone's
+result is an observation, Traefik's counters cannot be split by client). (On
+OKE the limit was a shared flood guard of 5 requests a second with a burst of
+10, because the load balancer hid client addresses, #97.)
 
 **A. external-dns** (record missing, stale or wrong):
 

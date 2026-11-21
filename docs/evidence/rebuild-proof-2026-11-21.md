@@ -117,3 +117,4 @@ The runbook was changed for each of these:
   its end. The real total is a few seconds longer.
 - Not checked: that a second client still gets 200 during another client's
   burst (see [k3s-bootstrap-2026-11-12.md](k3s-bootstrap-2026-11-12.md)).
+  Checked later the same day: [k3s-live-checks-2026-11-21.md](k3s-live-checks-2026-11-21.md).
