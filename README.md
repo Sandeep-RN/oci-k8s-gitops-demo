@@ -67,7 +67,7 @@ The full picture, with the reasons, is in
 | Deleting the cluster and rebuilding it on the same VM | 20 min 36 s from the end of the uninstall to the data restored: 10 Applications healthy after 17 min 57 s, all 38 rows back, `terraform plan` empty before and after. Includes the time a person needed; the VM itself was not rebuilt | [evidence](docs/evidence/rebuild-proof-2026-11-21.md) |
 | Backup and restore | Nightly dumps. Restore drilled on 2026-10-25 and done for real in the move on 2026-11-12 | [runbook](docs/runbooks/postgres-backup-restore.md) |
 | Image scan gate | Blocked a real HIGH CVE before the image was pushed | [evidence](docs/evidence/oke-final-2026-11-10.md) |
-| Rate limit per client | One client's burst of 600 requests got 282 answers of 429. Not run yet: the check that a second client still gets 200 during the burst | [#115](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/115) |
+| Rate limit per client | One client's burst of 600 requests got 282 answers of 429. While a laptop got 1410 x 429 over a 60 second flood, a phone on mobile data was served normally on every reload | [#115](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/115), [evidence](docs/evidence/k3s-live-checks-2026-11-21.md) |
 | Spend cap | A launch outside the allowed shapes was refused by the quota policy, before the account became Pay As You Go | [ADR 0021](docs/adr/0021-pay-as-you-go-with-guardrails.md), [#113](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/113) |
 
 The drain, rollout and alert tests ran on the two-node OKE target, because one

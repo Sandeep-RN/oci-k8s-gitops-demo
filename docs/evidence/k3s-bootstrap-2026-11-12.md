@@ -126,13 +126,15 @@ The draft was written before the cluster existed. The run found these:
 - Doesn't show: a **rebuild** of this cluster. That was run later, on
   2026-11-20 and 21: [rebuild-proof-2026-11-21.md](rebuild-proof-2026-11-21.md)
   ([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57)). Three
-  commands in the runbook were rewritten after the first run and are marked
-  there as not run in their final form.
+  commands in the runbook were rewritten after the first run; they were run in
+  their final form on 2026-11-21 ([k3s-live-checks-2026-11-21.md](k3s-live-checks-2026-11-21.md)).
 - Doesn't show: that a second client still gets 200 while another client is
-  rate limited. Only the one-client burst was run.
+  rate limited. Only the one-client burst was run. (Checked later, on
+  2026-11-21: [k3s-live-checks-2026-11-21.md](k3s-live-checks-2026-11-21.md).)
 - Not checked in this run: the nightly backup schedule on k3s (only a manual
   backup), Prometheus memory use against the estimate for the 12 GB node, and a
-  disk-full alert for the `local-path` volumes.
+  disk-full alert for the `local-path` volumes. (Memory was checked on
+  2026-11-21, same page; the disk-full alert is still open, #140.)
 - One node cannot show what the OKE tests showed: a drain or a node failure
   here is an outage (ADR 0001). See
   [oke-final-2026-11-10.md](oke-final-2026-11-10.md).

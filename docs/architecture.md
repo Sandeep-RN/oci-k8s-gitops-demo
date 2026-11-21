@@ -174,7 +174,10 @@ and rebuilt only the cluster on it
   dump is the recovery path.
 - `local-path` does not enforce volume sizes. The 50 GB boot volume is shared by
   the OS, images, Postgres and Prometheus, so Prometheus has a size cap of its
-  own (section 7).
+  own (section 7). Measured on 2026-11-21: both volumes report the node's
+  filesystem (about 50.9 GB), not their own 5Gi and 10Gi, and the reclaim policy
+  is `Delete`, so deleting a claim deletes its data
+  ([evidence](evidence/k3s-live-checks-2026-11-21.md)).
 
 **How the capacity arrived.** From 2026-10-22 the home region (one
 availability domain) reported no A1 capacity at 2/12, 1/6 or 1/4, and none for
@@ -234,7 +237,7 @@ token:
 | **Entry** | The node's ephemeral public IP; the security list allows TCP 80 and 443 | Costs nothing and has fewer moving parts than a load balancer. An ephemeral IP lives as long as the instance, which `prevent_destroy` protects |
 | **Traefik** (1 pod, k3s's own) | Redirects HTTP to HTTPS (a GET gets 301, other methods 308), terminates TLS, applies the rate limit and HSTS, routes to the Service | The same standard Ingress object as on OKE. Dashboard off (ADR 0014); metrics only on a ClusterIP Service |
 | **cert-manager** | Issues and renews the Let's Encrypt certificate by DNS-01 on Cloudflare; renews 30 days before expiry | DNS-01 needs no inbound port. The site has HTTPS with a production certificate since 2026-10-31; on k3s the certificate was issued on the first order (2026-11-12) |
-| **Rate limit** | 20 requests a second per client, burst 40 | Per client, because Traefik sees real client IPs. A burst of 600 requests from one client got 282 x 429. **Not run:** the check that a second client still gets 200 during that burst |
+| **Rate limit** | 20 requests a second per client, burst 40 | Per client, because Traefik sees real client IPs. A burst of 600 requests from one client got 282 x 429. On 2026-11-21 a laptop got 1410 x 429 over a 60 second flood while a phone on mobile data was served normally on every reload ([evidence](evidence/k3s-live-checks-2026-11-21.md); an observation, since Traefik's counters cannot be split by client) |
 | **HSTS** | `max-age=15552000` (180 days) on this host only | Every response re-sends it, so a browser keeps enforcing HTTPS for 180 days after its last visit. No `includeSubDomains`, no preload, so the blog is unaffected |
 | **Token gate** | `POST /api/links` needs `Authorization: Bearer TOKEN`; redirects, lookups and health are public | A public shortener on a real domain is an open redirector and would put the domain on blocklists. Tokens are named and stored with the link (`created_by`), so one can be revoked alone |
 
