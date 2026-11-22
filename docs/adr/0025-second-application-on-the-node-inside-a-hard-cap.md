@@ -60,14 +60,25 @@ anything. Protection against real memory pressure has to come from limits.
   about 4.9 GB in use plus at most 1 GiB stays near 50% of the node, well
   under the 75% line, however the assistant misbehaves.
 - **A memory budget that fits the cap at peak**, with every pod running at
-  once, not only in steady state. Starting point (tuned in M1):
+  once, not only in steady state. Tuned in #195 (2026-11-22) from measured
+  peaks; the starting point was app 384Mi, Postgres 256Mi, indexing Job 384Mi:
 
-  | Pod | Memory (request = limit) |
-  |---|---|
-  | App (API, page, query embedding) | 384Mi |
-  | Postgres with pgvector | 256Mi |
-  | Indexing Job | 384Mi |
-  | **Total** | **1024Mi** |
+  | Pod | Memory (request = limit) | CPU limit (request) | Measured peak |
+  |---|---|---|---|
+  | App (API, page, query embedding) | 320Mi | 300m (100m) | 247 MiB |
+  | Postgres with pgvector | 256Mi | 200m (50m) | about 45 MiB |
+  | Indexing Job | 384Mi | 450m (100m) | 272 MiB |
+  | Database role Job (sync hook, seconds) | 64Mi | 50m (10m) | n/a |
+  | **Total** | **1024Mi** | **1000m (260m)** | |
+
+  Peaks are the container's cgroup peak (page cache included) on x86, with
+  `MALLOC_ARENA_MAX=2`: the app with four questions at once, the indexing Job
+  on a full first run of 285 passages. The starting point left the Job 48 MiB
+  over its peak at 320Mi, so memory moved from the app (which needs less) to
+  the Job. The role Job was not in the starting table; it can run while every
+  other pod is up, so it has its own line. CI (gitops `validate.yml`) checks
+  that the limits add up to no more than the quota. Demo #196 measures the
+  peaks again on the arm64 node.
 
 - **No surge pods.** The app runs one replica with `strategy: Recreate`, and
   the indexing CronJob uses `concurrencyPolicy: Forbid`. A default rolling
