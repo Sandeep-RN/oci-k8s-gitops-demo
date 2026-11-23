@@ -129,9 +129,11 @@ How to quote these honestly:
 - **ADR 0025** (a second application inside a hard cap) is **designed, not
   verified**, until [#196](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/196)
   closes. Say "designed a hard cap for a second application", never "proved
-  the cap protects the first". Single checks in #196 (the quota refused a pod
-  in a dry run; the index Job's peak memory) may be quoted as they are
-  written in the README, each as one check, not as the ADR verified.
+  the cap protects the first". The four single checks posted in #196 on
+  2026-11-22 may be quoted one at a time, as they are written there: the
+  negative priority was accepted; every pod is QoS `Burstable`; the quota
+  refused an over-cap pod on a server-side dry run; each pod's peak memory
+  stayed within its budget line. Never combine them into "ADR 0025 verified".
 - The **six k3s platform alerts** (certificate, Traefik 5xx, node disk) have
   **not fired** on the real cluster; they are tested with `promtool` only.
   Say "alerts with runbooks", never that they caught a problem.
@@ -277,7 +279,7 @@ Pick three to five. Do not merge two bullets into one bigger claim.
 title: "Kubernetes GitOps Platform on OCI Free Tier"
 description: "A production-shaped service on one free VM: ArgoCD GitOps delivery in about 7 minutes from merge to live, a 7-day SLO with burn-rate alerts proven by a planned outage, tested backups, and a live move between clusters with 25 seconds without a DNS record."
 tags: ["Kubernetes", "ArgoCD", "GitOps", "Terraform", "Prometheus", "SLI/SLO", "GitHub Actions", "OCI"]
-status: "in progress"   # done except the 3-minute video (#58) and the ADR 0025 live check (#196); set "done" when both close
+status: "in progress"   # done except the 3-minute video (#58); set "done" when #58 closes (#196 belongs to the second app and does not block this card)
 date: "2026-11"
 github: "https://github.com/Sandeep-RN/oci-k8s-gitops-demo"
 ```
@@ -352,6 +354,6 @@ Update this file, then everything written from it, when these close.
 
 | When | Change |
 |---|---|
-| The 3-minute video is recorded and [#58](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/58) closes | Add the video to "Links" and to the README's "Evidence"; set the portfolio card to `status: "done"` if #196 is also closed |
+| The 3-minute video is recorded and [#58](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/58) closes | Add the video to "Links" and to the README's "Evidence"; set the portfolio card to `status: "done"` (#196 does not block the card: it is the second application's check) |
 | [#196](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/196) closes (ADR 0025 on the live node, including 7 days of the link shortener's SLO unaffected) | "Decisions": change ADR 0025 from "designed, not yet verified" to what #196 measured; drop its quoting rule or replace it with the measured result |
 | Optional: the final credit balance can be read in OCI Billing | "Facts", Cost: add it. Until then do not claim it |

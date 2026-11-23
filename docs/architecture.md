@@ -425,6 +425,11 @@ proofs cannot be repeated on the single k3s node.
 compute. The trial credit is USD 300 (SGD 400 in the account), ending about
 2026-11-19.
 
+Note (2026-11-23): the figure above is a mid-way reading, kept as history.
+The final OKE result is in the closing comment of
+[#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13): SGD 44.96
+in total for 2026-11-01 to 2026-11-15, and $0 for OKE from 2026-11-16.
+
 The OKE target served the site until 2026-11-12 and was destroyed on
 2026-11-15 (issue [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)).
 
