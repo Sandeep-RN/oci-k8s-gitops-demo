@@ -228,10 +228,10 @@ policy caps what can be created, and a budget watches the rest.
 The OKE target cost about SGD 3.05 a day while it ran (SGD 45.69 from
 2026-10-22 to 2026-11-06), paid from the trial credit. After the teardown,
 Cost Analysis showed SGD 0.00 for every service on each day from 2026-11-16
-to 2026-11-20; the last charges were on 2026-11-15, the teardown day
+to 2026-11-22 (and 0.00 so far on 2026-11-23); the last charges were on 2026-11-15, the teardown day
 ([#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)). The trial credit was due to end about
-2026-11-19. I have not yet confirmed its final balance in the Console, so this
-page claims no more than those daily figures.
+2026-11-19. The Console's subscription panel returns an error, so I cannot show
+the final credit balance; this page claims no more than the daily figures.
 
 ## Working here
 

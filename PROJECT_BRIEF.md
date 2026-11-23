@@ -65,7 +65,7 @@ on 2026-11-15 (issue [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/iss
 | Cloud | Oracle Cloud Infrastructure. One Always Free Ampere A1 VM: 2 OCPU, 12 GB, arm64, Ubuntu 24.04. (Oracle's [Always Free page](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm) gives 1,500 OCPU hours and 9,000 GB hours a month, "equivalent to 2 OCPUs and 12 GB of memory"; checked 2026-11-13) |
 | Kubernetes | k3s v1.36 on one node (today). OKE, two nodes, for the multi-node tests (2026-10-22 to 2026-11-12) |
 | Size of the work | On 2026-11-23: 202 merged pull requests across the three platform repos (33 of them automated image-tag bumps, 10 from Dependabot; counted with `gh pr list`), plus 19 in the assistant's repo. 25 ADRs, 8 runbooks, 5 evidence write-ups |
-| Cost | Target $0 a month. The OKE target cost about SGD 3.05 a day, paid from trial credit. Cost Analysis showed SGD 0.00 for every service on each day from 2026-11-16 to 2026-11-20 (last charges 2026-11-15, [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)). The remaining credit balance is not confirmed: do not claim it |
+| Cost | Target $0 a month. The OKE target cost about SGD 3.05 a day, paid from trial credit. Cost Analysis showed SGD 0.00 for every service on each day from 2026-11-16 to 2026-11-22, and 0.00 so far on 2026-11-23 (last charges 2026-11-15, [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)). The remaining credit balance cannot be shown (the Console's subscription panel returns an error): do not claim it. The monthly budget is SGD 7, so November's SGD 44.96 (all before 2026-11-16) makes it read over budget until it resets on 2026-12-01 |
 | Second application | An on-call assistant that answers from the project's documents, live at <https://ask.sandeeprn.in>, in [its own repo](https://github.com/Sandeep-RN/oncall-assistant). Use only the numbers in the README section "A second app"; its answer quality and SLO are not measured yet |
 | Built with | An AI coding assistant, Claude Code. See "How it was built" |
 
@@ -324,5 +324,5 @@ Update this file, then everything written from it, when these close:
 
 | When | Change |
 |---|---|
-| Done 2026-11-23: Cost Analysis after the OKE teardown ([#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13), destroyed 2026-11-15) | "Facts", Cost now carries the daily result (SGD 0.00 from 2026-11-16 to 2026-11-20). Still to add if confirmed: the final credit balance |
+| Done 2026-11-23: Cost Analysis after the OKE teardown ([#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13), destroyed 2026-11-15) | "Facts", Cost now carries the daily result (SGD 0.00 from 2026-11-16 to 2026-11-22). Still to add if confirmed: the final credit balance |
 | Done 2026-11-21: rebuild proof ([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57)) | "Results" carries the measured rebuild time; "Not done" keeps only the VM rebuild; the portfolio card is `status: "done"` |
