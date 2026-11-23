@@ -64,7 +64,7 @@ A second application, an on-call assistant, runs on the same node at
 | Kind | Personal project. One person: design, decisions, build, operation |
 | Period | 2026-10-20 to 2026-11-14 for the build; tests and the second application to 2026-11-23; two open items below |
 | Repos (public) | [infrastructure and docs](https://github.com/Sandeep-RN/oci-k8s-gitops-demo), [application and CI](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-app), [Kubernetes manifests](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-gitops) |
-| Live URL | <https://demo.sandeeprn.in> (landing page with a working short link; API page at `/docs`) |
+| Live URL | <https://demo.sandeeprn.in> (landing page with a working short link; API page at `/api/docs`) |
 | Cloud | Oracle Cloud Infrastructure. One Always Free Ampere A1 VM: 2 OCPU, 12 GB, arm64, Ubuntu 24.04. (Oracle's [Always Free page](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm) gives 1,500 OCPU hours and 9,000 GB hours a month, "equivalent to 2 OCPUs and 12 GB of memory"; checked 2026-11-13) |
 | Kubernetes | k3s v1.36 on one node (today). OKE, two nodes, for the multi-node tests (2026-10-22 to 2026-11-12) |
 | Size of the work | On 2026-11-23 (14:00 UTC): 213 merged pull requests across the three platform repos (74 infrastructure and docs, 36 application, 103 manifests; 34 of them automated image-tag bumps, 10 from Dependabot; counted with `gh pr list --state merged`), plus 21 in the assistant's repo. 25 ADRs, 9 runbooks, 5 evidence write-ups |
