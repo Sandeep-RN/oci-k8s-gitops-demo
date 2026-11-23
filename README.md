@@ -10,7 +10,7 @@ application, the on-call assistant.
 > **Status (2026-11-23):** live at
 > **[demo.sandeeprn.in](https://demo.sandeeprn.in/)** on a single-node k3s
 > cluster (one Always Free Ampere A1 VM). The landing page has a working short
-> link; the API page is at `/docs`. A second application, an on-call
+> link; the API page is at `/api/docs`. A second application, an on-call
 > assistant, runs on the same node at
 > **[ask.sandeeprn.in](https://ask.sandeeprn.in/)**
 > ([below](#a-second-app-the-on-call-assistant)).
@@ -166,7 +166,7 @@ Every change of approach is an ADR. The index is
   (`prevent_destroy`).
 - **Nothing pages if the monitoring stack itself dies.** There is no dead man's
   switch, and the outside probe runs only every few hours.
-- **The link shortener's `/docs` page is open to everyone.** It is a demo API page
+- **The link shortener's `/api/docs` page is open to everyone.** It is a demo API page
   and is linked above on purpose, but it loads its Swagger UI script from a
   third-party CDN. The assistant's own API docs are switched off for that reason
   ([oncall-assistant#47](https://github.com/Sandeep-RN/oncall-assistant/issues/47)).

@@ -14,7 +14,7 @@ shaped this way. Decisions link to their ADRs in [`docs/adr/`](adr/).
 
 | | Built and verified | Not built, or still open |
 |---|---|---|
-| **App** | FastAPI link shortener on PostgreSQL: 302 redirects, fail-fast 503s during a database outage, request metrics; landing page at `/` and API page at `/docs`, both served by the backend; non-root multi-arch image | No separate frontend (`frontend/` in the app repo is an empty placeholder) |
+| **App** | FastAPI link shortener on PostgreSQL: 302 redirects, fail-fast 503s during a database outage, request metrics; landing page at `/` and API page at `/api/docs`, both served by the backend; non-root multi-arch image | No separate frontend (`frontend/` in the app repo is an empty placeholder) |
 | **CI** | Lint, test (with real Postgres), Trivy scan, amd64+arm64 build, push to GHCR, auto-merging tag-bump PR; gitleaks full-history scan in all three repos | |
 | **GitOps** | ArgoCD v3.5.6 app of apps `root-k3s`, self-managed, Kustomize base and overlays, Sealed Secrets, `validate` check (kubeconform, Helm render, promtool, amtool) | |
 | **Cluster** | k3s v1.36.5+k3s1 on one A1 VM (2 OCPU / 12 GB), Terraform-managed, `prevent_destroy` | HPA; NetworkPolicies. The cluster rebuild was run ([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57)); a VM rebuild was not |
