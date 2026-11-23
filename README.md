@@ -56,7 +56,7 @@ The full picture, with the reasons, is in
 | Delivery | GitHub Actions: test, build for amd64 and arm64, Trivy scan, push. Then a tag-bump pull request merges itself and ArgoCD applies it |
 | Edge | Traefik, cert-manager (Let's Encrypt, DNS-01), external-dns, HSTS, a rate limit per client, token-gated link creation |
 | App | FastAPI link shortener, 2 replicas, PostgreSQL with nightly dumps to Object Storage |
-| Observability | Prometheus, Alertmanager, Grafana; a 7-day SLO with burn-rate alerts to Discord; probes from inside and outside the cluster |
+| Observability | Prometheus, Alertmanager, Grafana; a 7-day SLO with burn-rate alerts to Discord; probes from inside and outside the cluster; alerts for certificate expiry, Traefik 5xx and node disk, each with a runbook (unit-tested, none has fired yet) |
 
 ## Results, with the proof
 
@@ -189,9 +189,9 @@ What comes next, and what would change at scale:
 I built the platform between 2026-10-20 and 2026-11-14 to practise running
 Kubernetes the way I would want it run in production, then kept testing and
 adding to it (the cluster rebuild on 2026-11-20 and 21, the assistant from
-2026-11-18). Every change went through a pull request: on 2026-11-23, 202
-merged across the three platform repos (33 of them automated image tag bumps,
-10 from Dependabot) and 19 more in the assistant's repo. Every change of
+2026-11-18). Every change went through a pull request: on 2026-11-23, 213
+merged across the three platform repos (34 of them automated image tag bumps,
+10 from Dependabot) and 21 more in the assistant's repo. Every change of
 approach is an ADR. Every claim on this page links to a test that was run on a live cluster.
 
 I used an AI coding assistant (Claude Code) throughout. It wrote much of the
@@ -227,7 +227,8 @@ Pay As You Go, because that is what finally got the free VM its capacity
 policy caps what can be created, and a budget watches the rest.
 
 The OKE target cost about SGD 3.05 a day while it ran (SGD 45.69 from
-2026-10-22 to 2026-11-06), paid from the trial credit. After the teardown,
+2026-10-22 to 2026-11-06, and SGD 44.96 in total for 2026-11-01 to
+2026-11-15), paid from the trial credit. After the teardown,
 Cost Analysis showed SGD 0.00 for every service on each day from 2026-11-16
 to 2026-11-22 (and 0.00 so far on 2026-11-23); the last charges were on 2026-11-15, the teardown day
 ([#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)). The trial credit was due to end about

@@ -2,8 +2,9 @@
 
 The single source of facts about this project for anything written about it
 somewhere else: a resume, a portfolio page, a profile, a post, an interview
-answer. **Last verified: 2026-11-14** (the OKE status and "What changes next" updated 2026-11-16;
-size, cost, the second application and the open items updated 2026-11-23).
+answer. **Last verified: 2026-11-23** (every count, the cost, the decisions,
+the alerts and the open items were checked against the repos and the issues
+that day, [#225](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/225)).
 
 ## How to use this file
 
@@ -16,10 +17,10 @@ For a person, or for an AI assistant working in another project:
 3. **Do not claim what the "Not done" section lists.** Saying the limits out
    loud is part of how this project is presented.
 4. **Prefer the ready-made text** in "Ready to use" to writing new claims.
-5. **Check the date above.** The two items that were open on 2026-11-14 (the Cost
-   Analysis after the OKE teardown, and the rebuild proof) are closed. "What changes next" at the end says which lines to update
-   when they close. If this file is more than a month old, read the
-   [README](README.md) first.
+5. **Check the date above.** Two items are still open on 2026-11-23: the
+   3-minute video (#58) and the live check of ADR 0025 (#196). "What changes
+   next" at the end says which lines to update when they close. If this file
+   is more than a month old, read the [README](README.md) first.
 6. **Ask the owner** for anything that is missing. Do not fill a gap by guessing.
 
 ## Summary
@@ -32,7 +33,7 @@ decision written down.
 Cloud's free tier. Every change is delivered through Git: CI builds and scans
 the image, a pull request changes the tag, ArgoCD deploys it. It has HTTPS, an
 availability SLO with burn-rate alerts, nightly backups with tested restores,
-and 24 recorded decisions.
+and 25 recorded decisions.
 
 **150 words.** I wanted to run Kubernetes the way a production service should
 be run, at a cost of zero. The free ARM capacity I planned for was unavailable
@@ -52,6 +53,8 @@ record was absent for 25 seconds.
 Live at <https://demo.sandeeprn.in> on a single-node k3s cluster since
 2026-11-12. The OKE target served the site until 2026-11-12 and was destroyed
 on 2026-11-15 (issue [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)).
+A second application, an on-call assistant, runs on the same node at
+<https://ask.sandeeprn.in> (its numbers: "Second application" below).
 
 ## Facts
 
@@ -59,14 +62,15 @@ on 2026-11-15 (issue [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/iss
 |---|---|
 | Name | oci-k8s-gitops-demo |
 | Kind | Personal project. One person: design, decisions, build, operation |
-| Period | 2026-10-20 to 2026-11-14 for the build; two open items below |
+| Period | 2026-10-20 to 2026-11-14 for the build; tests and the second application to 2026-11-23; two open items below |
 | Repos (public) | [infrastructure and docs](https://github.com/Sandeep-RN/oci-k8s-gitops-demo), [application and CI](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-app), [Kubernetes manifests](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-gitops) |
 | Live URL | <https://demo.sandeeprn.in> (landing page with a working short link; API page at `/docs`) |
 | Cloud | Oracle Cloud Infrastructure. One Always Free Ampere A1 VM: 2 OCPU, 12 GB, arm64, Ubuntu 24.04. (Oracle's [Always Free page](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm) gives 1,500 OCPU hours and 9,000 GB hours a month, "equivalent to 2 OCPUs and 12 GB of memory"; checked 2026-11-13) |
 | Kubernetes | k3s v1.36 on one node (today). OKE, two nodes, for the multi-node tests (2026-10-22 to 2026-11-12) |
-| Size of the work | On 2026-11-23: 202 merged pull requests across the three platform repos (33 of them automated image-tag bumps, 10 from Dependabot; counted with `gh pr list`), plus 19 in the assistant's repo. 25 ADRs, 9 runbooks, 5 evidence write-ups |
-| Cost | Target $0 a month. The OKE target cost about SGD 3.05 a day, paid from trial credit. Cost Analysis showed SGD 0.00 for every service on each day from 2026-11-16 to 2026-11-22, and 0.00 so far on 2026-11-23 (last charges 2026-11-15, [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)). The remaining credit balance cannot be shown (the Console's subscription panel returns an error): do not claim it. The monthly budget is SGD 7, so November's SGD 44.96 (all before 2026-11-16) makes it read over budget until it resets on 2026-12-01 |
+| Size of the work | On 2026-11-23 (14:00 UTC): 213 merged pull requests across the three platform repos (74 infrastructure and docs, 36 application, 103 manifests; 34 of them automated image-tag bumps, 10 from Dependabot; counted with `gh pr list --state merged`), plus 21 in the assistant's repo. 25 ADRs, 9 runbooks, 5 evidence write-ups |
+| Cost | Target $0 a month. The OKE target cost about SGD 3.05 a day, paid from trial credit: SGD 44.96 in total for 2026-11-01 to 2026-11-15 (SGD 45.69 for 2026-10-22 to 2026-11-06, [evidence](docs/evidence/oke-final-2026-11-10.md)). Cost Analysis confirmed $0 for OKE from 2026-11-16: SGD 0.00 for every service on each day from 2026-11-16 to 2026-11-22, and 0.00 so far on 2026-11-23 (last charges 2026-11-15, the teardown day, [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)). The remaining credit balance cannot be shown (the Console's subscription panel returns an error): do not claim it. The monthly budget is SGD 7, so November's SGD 44.96 (all before 2026-11-16) makes it read over budget until it resets on 2026-12-01 |
 | Second application | An on-call assistant that answers from the project's documents, live at <https://ask.sandeeprn.in>, in [its own repo](https://github.com/Sandeep-RN/oncall-assistant). Use only the numbers in the README section "A second app"; its answer quality and SLO are not measured yet |
+| Alerts on k3s | Besides the SLO burn-rate and probe alerts: six platform alerts added on 2026-11-23, each with a runbook section. Certificate expiry (`CertificateExpiringSoon`, `CertificateNotReady`, `CertManagerMetricsMissing`) and Traefik 5xx (`TraefikServerErrorsHigh`, `TraefikMetricsMissing`) in the [edge runbook](docs/runbooks/edge.md); node disk (`NodeRootDiskLow`) in the [k3s node runbook](docs/runbooks/k3s-node.md). Tested with `promtool` unit tests and checked live as loaded and inactive; none has fired on the real cluster ([#140](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/140)) |
 | Built with | An AI coding assistant, Claude Code. See "How it was built" |
 
 **Tools, by layer** (use these exact names for skills and tags):
@@ -96,7 +100,7 @@ Every row has a source. The README has the same table; keep the two equal.
 | A whole cluster from Git | On a new node, 10 ArgoCD Applications were Synced and Healthy 3.5 minutes after the root Application was applied (after the key restore and the ArgoCD install) | [evidence 2026-11-12](docs/evidence/k3s-bootstrap-2026-11-12.md) |
 | Moving the live site to another cluster | The cutover was one pull request. DNS record absent for 25 seconds. All 34 rows restored | same |
 | Deleting the cluster and rebuilding it on the same VM | 20 min 36 s from the end of the uninstall to the data restored: 10 Applications healthy after 17 min 57 s, all 38 rows back, `terraform plan` empty before and after. Includes the time a person needed; the VM itself was not rebuilt | [evidence 2026-11-21](docs/evidence/rebuild-proof-2026-11-21.md) |
-| Backup and restore | Nightly dumps. Restored twice: a drill on 2026-10-25, and for real in the move on 2026-11-12 | [runbook](docs/runbooks/postgres-backup-restore.md) |
+| Backup and restore | Nightly dumps. Restored three times: a drill on 2026-10-25, for real in the move on 2026-11-12, and in the rebuild on 2026-11-21 ([evidence](docs/evidence/rebuild-proof-2026-11-21.md)) | [runbook](docs/runbooks/postgres-backup-restore.md) |
 | Image scan gate | Blocked a real HIGH CVE before the image was pushed | [evidence 2026-11-08](docs/evidence/oke-final-2026-11-10.md) |
 | Rate limit per client | One client's burst of 600 requests got 282 answers of 429. That Traefik sees each client's own address was measured with a packet capture. On 2026-11-21 a laptop got 1410 x 429 over a 60 second flood while a phone on mobile data was served normally on every reload (an observation: Traefik's counters cannot be split by client) | [#115](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/115), [ADR 0022](docs/adr/0022-moving-the-demo-from-oke-to-k3s.md), [evidence](docs/evidence/k3s-live-checks-2026-11-21.md) |
 | Spend cap | A launch outside the allowed shapes was refused by the quota policy | [ADR 0021](docs/adr/0021-pay-as-you-go-with-guardrails.md), [#113](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/113) |
@@ -122,6 +126,18 @@ How to quote these honestly:
   the outage began", never "detected the outage in real time".
 - "Paged" means a message in a Discord channel. There is no pager and no
   on-call rota.
+- **ADR 0025** (a second application inside a hard cap) is **designed, not
+  verified**, until [#196](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/196)
+  closes. Say "designed a hard cap for a second application", never "proved
+  the cap protects the first". Single checks in #196 (the quota refused a pod
+  in a dry run; the index Job's peak memory) may be quoted as they are
+  written in the README, each as one check, not as the ADR verified.
+- The **six k3s platform alerts** (certificate, Traefik 5xx, node disk) have
+  **not fired** on the real cluster; they are tested with `promtool` only.
+  Say "alerts with runbooks", never that they caught a problem.
+- **Restored three times**: each restore used a backup taken for it (a manual
+  run of the backup job or a fresh dump), not a scheduled nightly file. The
+  restore path is tested; a restore of a nightly file was not run separately.
 
 ## The story
 
@@ -166,8 +182,9 @@ How to quote these honestly:
 | A quota policy as the cap, a budget as the alarm | A budget cannot stop spend | [0021](docs/adr/0021-pay-as-you-go-with-guardrails.md) |
 | No load balancer on k3s | Real client IPs and no cost; the price is no redundancy at the edge | [0022](docs/adr/0022-moving-the-demo-from-oke-to-k3s.md) |
 | One node on the free tier | $0 a month; high availability is given up, and said so | [0001](docs/adr/0001-single-node-k3s-on-always-free-a1.md) |
+| A second application on the same node, inside a hard cap: its own namespace, a quota of 1 GiB of memory and 1 CPU for everything in it, and a lower priority than the link shortener | The free tier gives one node, so the second app must not be able to starve the first. **Designed, not yet verified:** the live check is [#196](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/196), still open | [0025](docs/adr/0025-second-application-on-the-node-inside-a-hard-cap.md) |
 
-All 24: [docs/adr/README.md](docs/adr/README.md).
+All 25: [docs/adr/README.md](docs/adr/README.md).
 
 ## Problems found and fixed
 
@@ -204,6 +221,12 @@ Do not claim any of these.
 - **A measured uptime figure.** The recovery time was measured once (20 min
   36 s, from a backup taken minutes earlier); it is not a guarantee.
 - **Database replication.** One replica; up to 24 hours of data can be lost.
+- **A verified cap for the second application.** ADR 0025 is designed and
+  deployed; its live check
+  ([#196](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/196)) is
+  still open.
+- **A real firing of the k3s platform alerts.** Unit-tested only
+  ([#140](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/140)).
 
 The full list, with what would come next: [docs/roadmap.md](docs/roadmap.md).
 
@@ -242,8 +265,11 @@ Pick three to five. Do not merge two bullets into one bigger claim.
 - Put a hard spending cap on a cloud account as code (Terraform, OCI quota
   policy) and proved it by a launch it had to refuse, before enabling pay as
   you go; the service is designed to cost $0 a month.
-- Recorded 24 architecture decisions and wrote 8 runbooks; nightly PostgreSQL
-  backups with a write-only identity, restored twice.
+- Recorded 25 architecture decisions and wrote 9 runbooks; nightly PostgreSQL
+  backups with a write-only identity, restored three times.
+- Deleted the Kubernetes cluster and rebuilt it on the same VM from Git, an
+  offline key backup and a data backup: rebuilt in about 21 minutes in one
+  run, every database row back, `terraform plan` empty before and after.
 
 ### Portfolio card
 
@@ -251,7 +277,7 @@ Pick three to five. Do not merge two bullets into one bigger claim.
 title: "Kubernetes GitOps Platform on OCI Free Tier"
 description: "A production-shaped service on one free VM: ArgoCD GitOps delivery in about 7 minutes from merge to live, a 7-day SLO with burn-rate alerts proven by a planned outage, tested backups, and a live move between clusters with 25 seconds without a DNS record."
 tags: ["Kubernetes", "ArgoCD", "GitOps", "Terraform", "Prometheus", "SLI/SLO", "GitHub Actions", "OCI"]
-status: "done"   # #13 and #57 closed
+status: "in progress"   # done except the 3-minute video (#58) and the ADR 0025 live check (#196); set "done" when both close
 date: "2026-11"
 github: "https://github.com/Sandeep-RN/oci-k8s-gitops-demo"
 ```
@@ -277,7 +303,7 @@ with automatic certificates, a 7-day availability SLO with burn-rate alerts
 that I proved with a planned outage, and nightly backups I have restored
 twice. On a two-node cluster I drained a node under live traffic with no
 failed request. I then moved the live site to a single free VM; the cutover
-was one pull request. 24 decisions and 8 runbooks are in the repo.
+was one pull request. 25 decisions and 9 runbooks are in the repo.
 
 ### Diagram in plain ASCII
 
@@ -320,9 +346,12 @@ For pages that cannot render Mermaid.
 
 ## What changes next
 
-Update this file, then everything written from it, when these close:
+Update this file, then everything written from it, when these close.
+#13 (Cost Analysis, closed 2026-11-16) and #57 (rebuild proof, closed
+2026-11-20) are done and already reflected above.
 
 | When | Change |
 |---|---|
-| Done 2026-11-23: Cost Analysis after the OKE teardown ([#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13), destroyed 2026-11-15) | "Facts", Cost now carries the daily result (SGD 0.00 from 2026-11-16 to 2026-11-22). Still to add if confirmed: the final credit balance |
-| Done 2026-11-21: rebuild proof ([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57)) | "Results" carries the measured rebuild time; "Not done" keeps only the VM rebuild; the portfolio card is `status: "done"` |
+| The 3-minute video is recorded and [#58](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/58) closes | Add the video to "Links" and to the README's "Evidence"; set the portfolio card to `status: "done"` if #196 is also closed |
+| [#196](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/196) closes (ADR 0025 on the live node, including 7 days of the link shortener's SLO unaffected) | "Decisions": change ADR 0025 from "designed, not yet verified" to what #196 measured; drop its quoting rule or replace it with the measured result |
+| Optional: the final credit balance can be read in OCI Billing | "Facts", Cost: add it. Until then do not claim it |
