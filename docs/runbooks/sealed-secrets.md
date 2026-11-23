@@ -30,6 +30,7 @@ on k3s and remove it from this list:
 | Public cert | `argocd/clusters/<cluster>/sealed-secrets-cert.pem` in the gitops repo; encrypt-only, safe to publish |
 | Backup location | The owner's password manager. **Never** a repo, chat, ticket or screenshot |
 | Scope | **One set of keys for this project** (ADR 0022): the OKE keys were restored on k3s on 2026-11-12, so the same sealed files decrypt on k3s as they did on OKE. The backup was kept at the OKE teardown (2026-11-15): it is the k3s key now |
+| Renewals | **2026-11-23 07:57:06 UTC:** the second key, `sealed-secrets-key65n9j`, 30 days after the first key's certificate started (2026-10-24 07:57:04). The controller counts from the certificate's start, not from a restore. Both keys were backed up the same day (one note each, 6,844 bytes, fingerprints checked against the cluster), then the committed certificate was refreshed ([#216](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/216)). Secrets sealed earlier kept decrypting (13 of 13 Synced). **Next renewal expected about 2026-12-23** (the new certificate's start plus 30 days: inferred from this one event, not documented): count the keys, back up again, refresh the certificate |
 
 All commands assume the k3s tunnel is running (`scripts/k3s-tunnel.sh`, see
 [k3s-access](k3s-access.md)) and use:

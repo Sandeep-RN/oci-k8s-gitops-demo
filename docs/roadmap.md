@@ -8,10 +8,10 @@ system. It is the other half of the [README](../README.md).
 
 | Item | Issue | State |
 |---|---|---|
-| Prove the OKE teardown stopped the bill (next-day Cost Analysis); the OKE target was destroyed and the quotas tightened on 2026-11-15 | [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13), [#113](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/113) | Destroyed; open until the Cost Analysis |
+| Prove the OKE teardown stopped the bill (next-day Cost Analysis); the OKE target was destroyed and the quotas tightened on 2026-11-15 | [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13), [#113](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/113) | Done: destroyed 2026-11-15; Cost Analysis showed SGD 0.00 on each day from 2026-11-16 to 2026-11-22; both issues closed |
 | Rebuild the k3s cluster on the same VM from Git, the key backup and the data backup | [#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57) | Done 2026-11-20/21: 20 min 36 s from the uninstall to the data restored ([evidence](evidence/rebuild-proof-2026-11-21.md)). The VM itself was not rebuilt |
 | Final README pass and a 3-minute video | [#58](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/58) | #13 and #57 are done |
-| Count the sealing keys after the first renewal on k3s; a second key needs a new backup | [k3s-bootstrap](runbooks/k3s-bootstrap.md), step 2 | After 2026-11-23 |
+| Count the sealing keys after each renewal on k3s; a second key needs a new backup | [sealed-secrets](runbooks/sealed-secrets.md) | Done 2026-11-23: a second key was found and both were backed up; next count about 2026-12-23 |
 | Alerts on k3s for certificate expiry, Traefik 5xx and a full disk (next step 11) | [#140](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/140) | Not started |
 | Live checks on k3s: Prometheus memory, the Traefik ServiceMonitor, volume stats | [#141](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/141) | Done 2026-11-21: all under their estimates, the target is up, and volume stats report the node's disk ([evidence](evidence/k3s-live-checks-2026-11-21.md)) |
 

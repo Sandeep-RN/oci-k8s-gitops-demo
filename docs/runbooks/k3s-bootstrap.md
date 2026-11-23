@@ -130,8 +130,11 @@ is a minimal export and not `-o yaml`.
 On the first run: one key, `sealed-secrets-key9h8gh`, on both clusters. The
 restored Secret gets a new creation time, so the date of the next 30-day
 renewal on k3s is not certain (30 days after the certificate's start date,
-2026-10-24, or after the restore, 2026-11-12). Count the keys again after
-2026-11-23; a second key means a new backup.
+2026-10-24, or after the restore, 2026-11-12). Answered on 2026-11-23: the
+controller made the second key at 07:57:06 UTC that day, 30 days after the
+certificate's start date, so a restore does not move the renewal date. Both
+keys were backed up ([sealed-secrets](sealed-secrets.md)); the next renewal is
+expected about 2026-12-23, then count and back up again.
 
 ## 3. Install ArgoCD and the cluster root (the only manual applies)
 
