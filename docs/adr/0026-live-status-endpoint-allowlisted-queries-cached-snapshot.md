@@ -1,6 +1,6 @@
 # 0026. A live status endpoint: allowlisted queries, a cached snapshot, no public admin UIs
 
-Status: Accepted (2026-11-23). Decided by the owner after the design note of the same day; built in demo #230. Keeps ADR 0014 in force.
+Status: Accepted (2026-11-23). Decided by the owner after the design note of the same day; built in demo #230. Keeps ADR 0014 in force. Amended 2026-11-24 after an independent security review (two decisions below changed; marked *amended*).
 
 ## Context
 The public site (demo.sandeeprn.in) shows text and links. The platform behind it has live data worth showing: the redirect SLO and its error budget (ADR 0008), traffic, node load, which commit is running and whether Argo CD is in sync (ADR 0023). The first idea was to link Grafana, Prometheus and Argo CD from the site.
@@ -19,7 +19,8 @@ Facts read from the live cluster on 2026-11-23:
 - **`GET /api/status` in the link-shortener backend** returns one JSON object of rounded aggregates: SLO (target, error budget, 7-day availability and latency), requests per second, node CPU and memory, node network bytes per second (labelled as all traffic), running pod count, running commit, last deploy time, and Argo CD synced and healthy. No labels, IPs or pod names.
 - **Every PromQL query is a constant in code.** No request data ever reaches a query. A test asserts the exact set of queries.
 - **The request path never calls Prometheus.** A background single-flight refresher runs every 30 s (2 s per query, 5 s per refresh) and writes an in-memory snapshot. The endpoint reads the snapshot.
-- **Failure keeps the last good snapshot.** It is marked `stale` after 90 s. The endpoint answers 503 only if no refresh ever succeeded. Values are parsed strictly as numbers and the Prometheus response size is capped.
+- **Failure keeps the last good snapshot.** It is marked `stale` after 90 s (at least three refresh intervals). *Amended:* before the first successful refresh the endpoint answers **200 with `{"available": false}`**, not 503. A 5xx on a public path counts toward the Traefik server-error alert, so a Prometheus that is down since startup would let any visitor keep that alert firing. Values are parsed strictly as numbers.
+- **Limits on what Prometheus can send** *(amended)*. The review showed that the claim "a dead Prometheus can only make the numbers stale" held only for one that is slow by accident. Now: the response is capped at 64 KiB (real answers are a few KB; a 1 MiB body had grown to about 100 MiB of memory per refresh against a 128Mi pod limit), at most 3 queries run at once, the whole read has a deadline that a slow-drip sender cannot stretch, and a refresh is skipped while workers from an earlier one are still alive, so stuck connections cannot pile up.
 - **Off unless configured.** The URL comes from `STATUS_PROMETHEUS_URL` in the ConfigMap. Unset means `/api/status` is 404, so local runs and tests are unaffected and the app can merge before the platform turns it on.
 - **Not part of readiness or liveness.** ADR 0016 stands: readiness checks only pod-local state, so a Prometheus outage can never remove a backend pod.
 - **A ServiceMonitor for Argo CD** (gitops) so that `argocd_app_info` exists. The status page shows its sync and health.
