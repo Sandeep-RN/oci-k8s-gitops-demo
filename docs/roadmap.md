@@ -1,6 +1,6 @@
 # Known limits and what comes next
 
-As of 2026-11-14 (the OKE rows updated 2026-11-16, the rebuild rows 2026-11-21). This page lists what is still open, what the project does
+As of 2026-11-14 (the OKE rows updated 2026-11-16, the rebuild rows 2026-11-21, the open work 2026-11-23). This page lists what is still open, what the project does
 not do, what I would do next, and what would change for a real production
 system. It is the other half of the [README](../README.md).
 
@@ -10,9 +10,9 @@ system. It is the other half of the [README](../README.md).
 |---|---|---|
 | Prove the OKE teardown stopped the bill (next-day Cost Analysis); the OKE target was destroyed and the quotas tightened on 2026-11-15 | [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13), [#113](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/113) | Done: destroyed 2026-11-15; Cost Analysis showed SGD 0.00 on each day from 2026-11-16 to 2026-11-22; both issues closed |
 | Rebuild the k3s cluster on the same VM from Git, the key backup and the data backup | [#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57) | Done 2026-11-20/21: 20 min 36 s from the uninstall to the data restored ([evidence](evidence/rebuild-proof-2026-11-21.md)). The VM itself was not rebuilt |
-| Final README pass and a 3-minute video | [#58](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/58) | #13 and #57 are done |
+| Final README pass and a 3-minute video | [#58](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/58) | README done 2026-11-23; the video is still to record |
 | Count the sealing keys after each renewal on k3s; a second key needs a new backup | [sealed-secrets](runbooks/sealed-secrets.md) | Done 2026-11-23: a second key was found and both were backed up; next count about 2026-12-23 |
-| Alerts on k3s for certificate expiry, Traefik 5xx and a full disk (next step 11) | [#140](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/140) | Not started |
+| Alerts on k3s for certificate expiry, Traefik 5xx and a full disk (next step 11) | [#140](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/140) | Done 2026-11-23: six alerts with runbook sections, unit-tested and loaded live; none has fired on the cluster |
 | Live checks on k3s: Prometheus memory, the Traefik ServiceMonitor, volume stats | [#141](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/141) | Done 2026-11-21: all under their estimates, the target is up, and volume stats report the node's disk ([evidence](evidence/k3s-live-checks-2026-11-21.md)) |
 
 ## Known limits
@@ -71,7 +71,8 @@ the others are not started.
 9. A dead man's switch: send the `Watchdog` alert to a heartbeat service.
 10. A `preStop` sleep and a shutdown test for the backend. A terminating pod
     can still get a request for a moment; one 502 was seen on 2026-11-02.
-11. Alerts for certificate expiry and for a full disk on the `local-path`
+11. Done 2026-11-23 ([#140](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/140)):
+    alerts for certificate expiry and for a full disk on the `local-path`
     volumes. The volumes report the node's filesystem, not their own size, so
     the disk alert is a node-filesystem alert.
 12. Scan the pushed multi-arch image, sign it, and attach an SBOM.
