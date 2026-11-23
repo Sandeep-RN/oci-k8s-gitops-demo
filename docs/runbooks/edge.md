@@ -187,6 +187,79 @@ rule changed first.
 
 After any change, run the verify script above.
 
+## Certificate expiring soon
+
+Alerts: `CertificateExpiringSoon` (warning under 14 days left, critical under 7),
+`CertificateNotReady` (warning) and `CertManagerMetricsMissing` (warning). The
+rules are in the gitops repo, `monitoring/k3s/platform-rules.yaml` (issue #140).
+They cover every certificate cert-manager manages, today `demo-sandeeprn-in-tls`
+(namespace `link-shortener`) and `ask-sandeeprn-in-tls` (namespace
+`oncall-assistant`); the alert's `name` and `namespace` labels say which.
+
+What they mean. cert-manager renews a 90-day certificate 30 days before it
+expires, so under 14 days left means renewal has been failing for more than two
+weeks. It is not an outage yet: the current certificate keeps serving until it
+expires. Under 7 days (critical) the browser warning is close, and with HSTS
+there is no click-through ([Facts](#facts)). `CertManagerMetricsMissing` means
+Prometheus reads no cert-manager metrics, so the other two alerts cannot fire:
+treat it as a broken alarm, not as a healthy certificate.
+
+Check first, with the alert's `namespace` and `name`:
+
+```bash
+$K get certificate -A
+$K -n <namespace> describe certificate <name>      # Ready, Not After, Renewal Time, the last event
+$K -n <namespace> get certificaterequest,order,challenge
+$K -n cert-manager logs deploy/cert-manager --tail=100
+```
+
+Then follow [Renew or debug the certificate](#renew-or-debug-the-certificate)
+(the table of signs and the forced renewal). Do not delete the TLS Secret to
+force it. For `CertManagerMetricsMissing`: check that the `cert-manager`
+Service answers on port 9402 and that the ServiceMonitor for it exists in the
+`monitoring` namespace (it comes from `monitoring/k3s` in the gitops repo).
+
+Not yet run on k3s: the alerts were added with demo #140 and have not fired on
+the real cluster; the commands above are the ones from "Renew or debug", whose
+own status is in "Not yet run on k3s in this form".
+
+## Traefik server errors
+
+Alerts: `TraefikServerErrorsHigh` (warning: more than 5% of HTTPS requests
+answered with a 5xx for 10 minutes, with at least 20 requests in that window)
+and `TraefikMetricsMissing` (warning: Prometheus cannot scrape Traefik). Rules:
+the gitops repo, `monitoring/k3s/platform-rules.yaml`.
+
+What they mean. The first counts every service behind Traefik, so it also sees
+errors the apps' own metrics cannot: Traefik answering 502, 503 or 504 itself
+(no ready backend, a refused connection). The link shortener's redirect SLO
+alerts page for that service's own 5xx, so both can fire for one cause. The
+assistant's deliberate 503s (`kind: unavailable`: a timeout, a provider error or
+a database that is down) count here too. Blind spot: with fewer than 20 requests
+in 10 minutes this alert stays quiet, and a total outage that small is caught by
+the probe alerts (`RedirectProbeNoAnswer`), not by this one.
+
+Check first:
+
+```bash
+# Which service and which status? Prometheus has no public UI: port-forward it.
+$K -n monitoring port-forward svc/kps-prometheus 9090 &      # then http://localhost:9090
+#   sum by (exported_service, code) (rate(traefik_service_requests_total{code=~"5.."}[10m]))
+$K -n <namespace of that service> get pods
+$K -n <namespace of that service> logs deploy/<name> --tail=100
+$K -n kube-system logs deploy/traefik --tail=100
+```
+
+A 5xx from one service means look at that service (the `exported_service` label
+reads `<namespace>-<service>-<port name>@kubernetes`, for example
+`oncall-assistant-app-http@kubernetes`). 502 or 503 on every service
+at once means look at Traefik itself and the node. If `TraefikMetricsMissing`
+fires, the numbers above do not exist: check that the `traefik` pod runs and
+that the `traefik-metrics` Service and its ServiceMonitor exist
+(`edge/traefik-k3s` in the gitops repo). Stop the port-forward when done.
+
+Not yet run on k3s: as above, the alerts have not fired on the real cluster.
+
 ## Rotate a Cloudflare token
 
 Do one component at a time, so a mistake affects one.
