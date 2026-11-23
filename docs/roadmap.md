@@ -8,7 +8,7 @@ system. It is the other half of the [README](../README.md).
 
 | Item | Issue | State |
 |---|---|---|
-| Prove the OKE teardown stopped the bill (next-day Cost Analysis); the OKE target was destroyed and the quotas tightened on 2026-11-15 | [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13), [#113](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/113) | Destroyed; open until the Cost Analysis |
+| Prove the OKE teardown stopped the bill (next-day Cost Analysis); the OKE target was destroyed and the quotas tightened on 2026-11-15 | [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13), [#113](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/113) | Done: destroyed 2026-11-15; Cost Analysis showed SGD 0.00 on each day from 2026-11-16 to 2026-11-20; both issues closed |
 | Rebuild the k3s cluster on the same VM from Git, the key backup and the data backup | [#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57) | Done 2026-11-20/21: 20 min 36 s from the uninstall to the data restored ([evidence](evidence/rebuild-proof-2026-11-21.md)). The VM itself was not rebuilt |
 | Final README pass and a 3-minute video | [#58](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/58) | #13 and #57 are done |
 | Count the sealing keys after the first renewal on k3s; a second key needs a new backup | [k3s-bootstrap](runbooks/k3s-bootstrap.md), step 2 | After 2026-11-23 |

@@ -2,14 +2,18 @@
 
 A small service, run the way a production one should be: built, deployed,
 observed and recovered through Git, on one free Oracle Cloud VM. This repo
-holds the infrastructure (Terraform), the decisions (24 ADRs), the runbooks,
+holds the infrastructure (Terraform), the decisions (25 ADRs), the runbooks,
 the test evidence and the issue tracker. Two sibling repos hold the
-application and the Kubernetes manifests.
+application and the Kubernetes manifests, and a third holds a second
+application, the on-call assistant.
 
-> **Status (2026-11-14):** live at
+> **Status (2026-11-23):** live at
 > **[demo.sandeeprn.in](https://demo.sandeeprn.in/)** on a single-node k3s
 > cluster (one Always Free Ampere A1 VM). The landing page has a working short
-> link; the API page is at `/docs`.
+> link; the API page is at `/docs`. A second application, an on-call
+> assistant, runs on the same node at
+> **[ask.sandeeprn.in](https://ask.sandeeprn.in/)**
+> ([below](#a-second-app-the-on-call-assistant)).
 >
 > Before that, the same service ran on a two-node OKE cluster (Oracle's managed
 > Kubernetes), paid from trial credit. The multi-node tests below were done
@@ -75,6 +79,29 @@ node cannot show a drain. They ran at under one request a second: they show
 that planned disruptions lose no requests, and they are not load tests. Each
 evidence page ends with what the test does not show.
 
+## A second app: the on-call assistant
+
+The same node also runs a small AI app. It answers on-call questions from this
+project's own documents, with citations, or says it does not know. It is a
+separate repo, [oncall-assistant](https://github.com/Sandeep-RN/oncall-assistant), live at
+[ask.sandeeprn.in](https://ask.sandeeprn.in/). The platform side is here:
+[ADR 0025](docs/adr/0025-second-application-on-the-node-inside-a-hard-cap.md) gives it its own namespace and a hard cap
+of 1 GiB of memory and 1 CPU for everything in it, at a lower priority than the
+link shortener. Its manifests are in the gitops repo, and ArgoCD applies them
+like everything else.
+
+| What was tested | Result | Proof |
+|---|---|---|
+| First full index of the documents | 7 min 4 s for 286 passages from 49 documents; the database is 9 MB. The index Job peaked at 271 MiB inside its 384 MiB limit, with no restart and no out-of-memory kill | [#196](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/196#issuecomment-7076495326) |
+| The cap refuses what does not fit | With 960 MiB of memory limits in use, a 128 MiB pod was refused by the quota and a 64 MiB pod was accepted (a dry run: nothing was created) | [#196](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/196#issuecomment-7076495326) |
+| First scheduled nightly index | 20 s: 1 changed document, 7 passages embedded. Peak 254 MiB of 384 MiB, no restart, no out-of-memory kill | [#196](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/196#issuecomment-7089851678) |
+| Rate limit and body cap on `/ask` | The first live test showed the limit was not applied (Traefik ranks routes by rule length); fixed with an explicit priority and a CI rule. Then five quick calls gave 422, 422, 422, 429, 429, and a 6 KB body gave 413 | [#195](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/195#issuecomment-7076302508) |
+| Does retrieval find the right passage? | In 25 of the 28 answerable questions of a 39-question set, a passage from the right document and section is in the top 5 (89%). The set was drafted by the assistant and is easier than real on-call questions, so the score is flattering | [oncall-assistant README](https://github.com/Sandeep-RN/oncall-assistant#readme) |
+
+Not done yet: the quality of the answers and the assistant's own SLO are not
+measured (milestone M2), and it has no live-state tools (M3). The numbers above
+are about the platform holding it, not about how good its answers are.
+
 ## Decisions I would defend
 
 Every change of approach is an ADR. The index is
@@ -138,26 +165,33 @@ Every change of approach is an ADR. The index is
   (`prevent_destroy`).
 - **Nothing pages if the monitoring stack itself dies.** There is no dead man's
   switch, and the outside probe runs only every few hours.
+- **The link shortener's `/docs` page is open to everyone.** It is a demo API page
+  and is linked above on purpose, but it loads its Swagger UI script from a
+  third-party CDN. The assistant's own API docs are switched off for that reason
+  ([oncall-assistant#47](https://github.com/Sandeep-RN/oncall-assistant/issues/47)).
 - **Not built:** NetworkPolicies, log aggregation, autoscaling, a load test.
 
 What comes next, and what would change at scale:
 [docs/roadmap.md](docs/roadmap.md).
 
-## The three repos
+## The four repos
 
 | Repo | Holds |
 | --- | --- |
 | **oci-k8s-gitops-demo** (this one) | Terraform for OCI, ADRs, glossary, runbooks, evidence, and the GitHub Issues tracker for all three repos |
 | [oci-k8s-gitops-demo-app](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-app) | FastAPI backend (it also serves the landing page), Dockerfile, GitHub Actions CI |
 | [oci-k8s-gitops-demo-gitops](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-gitops) | Kustomize manifests and ArgoCD Applications: the source of truth for the cluster |
+| [oncall-assistant](https://github.com/Sandeep-RN/oncall-assistant) | The on-call assistant: a retrieval app (FastAPI, PostgreSQL with pgvector) with its own tests, evals, CI and issue tracker. Its platform side (ADR 0025) is tracked here |
 
 ## How this was built
 
-I built this between 2026-10-20 and 2026-11-14 to practise running Kubernetes
-the way I would want it run in production. Every change went through a pull
-request (162 merged across the three repos, 16 of them automated image tag
-bumps and 5 from Dependabot). Every change of approach is an
-ADR. Every claim on this page links to a test that was run on a live cluster.
+I built the platform between 2026-10-20 and 2026-11-14 to practise running
+Kubernetes the way I would want it run in production, then kept testing and
+adding to it (the cluster rebuild on 2026-11-20 and 21, the assistant from
+2026-11-18). Every change went through a pull request: on 2026-11-23, 202
+merged across the three platform repos (33 of them automated image tag bumps,
+10 from Dependabot) and 19 more in the assistant's repo. Every change of
+approach is an ADR. Every claim on this page links to a test that was run on a live cluster.
 
 I used an AI coding assistant (Claude Code) throughout. It wrote much of the
 YAML, Terraform and scripts, and first drafts of these docs. I made the
@@ -174,7 +208,7 @@ assistant.
 terraform/       OCI infrastructure, one root per lifecycle: k3s/, shared/, guardrails/
 scripts/         state bootstrap, k3s tunnel and verify, public URL verify, A1 capacity retry (history)
 docs/architecture.md   How it is built and why
-docs/adr/        Architecture decision records (0001 to 0024), with an index
+docs/adr/        Architecture decision records (0001 to 0025), with an index
 docs/runbooks/   Access, k3s bootstrap, the edge, backups and restore, Sealed Secrets keys, the SLO alert, cost guardrails
 docs/evidence/   Write-ups of tests run on the clusters
 docs/roadmap.md  Known limits, next steps, what changes at scale
@@ -192,8 +226,12 @@ Pay As You Go, because that is what finally got the free VM its capacity
 policy caps what can be created, and a budget watches the rest.
 
 The OKE target cost about SGD 3.05 a day while it ran (SGD 45.69 from
-2026-10-22 to 2026-11-06), paid from the trial credit. The $0 figure is
-checked in Cost Analysis the day after the OKE teardown.
+2026-10-22 to 2026-11-06), paid from the trial credit. After the teardown,
+Cost Analysis showed SGD 0.00 for every service on each day from 2026-11-16
+to 2026-11-20; the last charges were on 2026-11-15, the teardown day
+([#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)). The trial credit was due to end about
+2026-11-19. I have not yet confirmed its final balance in the Console, so this
+page claims no more than those daily figures.
 
 ## Working here
 

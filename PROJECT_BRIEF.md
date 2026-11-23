@@ -2,7 +2,8 @@
 
 The single source of facts about this project for anything written about it
 somewhere else: a resume, a portfolio page, a profile, a post, an interview
-answer. **Last verified: 2026-11-14** (the OKE status and "What changes next" updated 2026-11-16).
+answer. **Last verified: 2026-11-14** (the OKE status and "What changes next" updated 2026-11-16;
+size, cost, the second application and the open items updated 2026-11-23).
 
 ## How to use this file
 
@@ -15,8 +16,8 @@ For a person, or for an AI assistant working in another project:
 3. **Do not claim what the "Not done" section lists.** Saying the limits out
    loud is part of how this project is presented.
 4. **Prefer the ready-made text** in "Ready to use" to writing new claims.
-5. **Check the date above.** Two items are still open (the Cost Analysis after the OKE
-   teardown, and the rebuild proof). "What changes next" at the end says which lines to update
+5. **Check the date above.** The two items that were open on 2026-11-14 (the Cost
+   Analysis after the OKE teardown, and the rebuild proof) are closed. "What changes next" at the end says which lines to update
    when they close. If this file is more than a month old, read the
    [README](README.md) first.
 6. **Ask the owner** for anything that is missing. Do not fill a gap by guessing.
@@ -63,8 +64,9 @@ on 2026-11-15 (issue [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/iss
 | Live URL | <https://demo.sandeeprn.in> (landing page with a working short link; API page at `/docs`) |
 | Cloud | Oracle Cloud Infrastructure. One Always Free Ampere A1 VM: 2 OCPU, 12 GB, arm64, Ubuntu 24.04. (Oracle's [Always Free page](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm) gives 1,500 OCPU hours and 9,000 GB hours a month, "equivalent to 2 OCPUs and 12 GB of memory"; checked 2026-11-13) |
 | Kubernetes | k3s v1.36 on one node (today). OKE, two nodes, for the multi-node tests (2026-10-22 to 2026-11-12) |
-| Size of the work | 162 merged pull requests (16 of them automated image-tag bumps, 5 from Dependabot), 24 ADRs, 8 runbooks, 3 evidence write-ups |
-| Cost | Target $0 a month. The OKE target cost about SGD 3.05 a day, paid from trial credit |
+| Size of the work | On 2026-11-23: 202 merged pull requests across the three platform repos (33 of them automated image-tag bumps, 10 from Dependabot; counted with `gh pr list`), plus 19 in the assistant's repo. 25 ADRs, 8 runbooks, 5 evidence write-ups |
+| Cost | Target $0 a month. The OKE target cost about SGD 3.05 a day, paid from trial credit. Cost Analysis showed SGD 0.00 for every service on each day from 2026-11-16 to 2026-11-20 (last charges 2026-11-15, [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)). The remaining credit balance is not confirmed: do not claim it |
+| Second application | An on-call assistant that answers from the project's documents, live at <https://ask.sandeeprn.in>, in [its own repo](https://github.com/Sandeep-RN/oncall-assistant). Use only the numbers in the README section "A second app"; its answer quality and SLO are not measured yet |
 | Built with | An AI coding assistant, Claude Code. See "How it was built" |
 
 **Tools, by layer** (use these exact names for skills and tags):
@@ -249,7 +251,7 @@ Pick three to five. Do not merge two bullets into one bigger claim.
 title: "Kubernetes GitOps Platform on OCI Free Tier"
 description: "A production-shaped service on one free VM: ArgoCD GitOps delivery in about 7 minutes from merge to live, a 7-day SLO with burn-rate alerts proven by a planned outage, tested backups, and a live move between clusters with 25 seconds without a DNS record."
 tags: ["Kubernetes", "ArgoCD", "GitOps", "Terraform", "Prometheus", "SLI/SLO", "GitHub Actions", "OCI"]
-status: "in-progress"   # change to "done" when #13 and #57 are closed
+status: "done"   # #13 and #57 closed
 date: "2026-11"
 github: "https://github.com/Sandeep-RN/oci-k8s-gitops-demo"
 ```
@@ -322,5 +324,5 @@ Update this file, then everything written from it, when these close:
 
 | When | Change |
 |---|---|
-| Cost Analysis after the OKE teardown ([#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13), destroyed 2026-11-15) | "Facts", Cost: add the first Cost Analysis result after the teardown. ("Status" already carries the teardown date.) |
-| Rebuild proof done ([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57)) | "Not done": remove the rebuild line. "Results": add the measured rebuild time. Portfolio card: `status: "done"` |
+| Done 2026-11-23: Cost Analysis after the OKE teardown ([#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13), destroyed 2026-11-15) | "Facts", Cost now carries the daily result (SGD 0.00 from 2026-11-16 to 2026-11-20). Still to add if confirmed: the final credit balance |
+| Done 2026-11-21: rebuild proof ([#57](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/57)) | "Results" carries the measured rebuild time; "Not done" keeps only the VM rebuild; the portfolio card is `status: "done"` |
