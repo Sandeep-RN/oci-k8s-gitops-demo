@@ -70,6 +70,7 @@ The full picture, with the reasons, is in
 | Moving the live site to another cluster | The cutover was one pull request. The DNS record was absent for 25 seconds. All 34 rows restored | [evidence](docs/evidence/k3s-bootstrap-2026-11-12.md) |
 | Deleting the cluster and rebuilding it on the same VM | 20 min 36 s from the end of the uninstall to the data restored: 10 Applications healthy after 17 min 57 s, all 38 rows back, `terraform plan` empty before and after. Includes the time a person needed; the VM itself was not rebuilt | [evidence](docs/evidence/rebuild-proof-2026-11-21.md) |
 | Backup and restore | Nightly dumps. Restore drilled on 2026-10-25 and done for real in the move on 2026-11-12 | [runbook](docs/runbooks/postgres-backup-restore.md) |
+| Sealed Secrets key renewal | The controller made its second key on 2026-11-23 at 07:57 UTC, exactly 30 days after the first key's certificate started. Both keys were backed up offline the same day, with their fingerprints checked against the cluster, before the repository's certificate was refreshed. The 13 secrets sealed earlier kept decrypting | [runbook](docs/runbooks/sealed-secrets.md), [#216](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/216) |
 | Image scan gate | Blocked a real HIGH CVE before the image was pushed | [evidence](docs/evidence/oke-final-2026-11-10.md) |
 | Rate limit per client | One client's burst of 600 requests got 282 answers of 429. While a laptop got 1410 x 429 over a 60 second flood, a phone on mobile data was served normally on every reload | [#115](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/115), [evidence](docs/evidence/k3s-live-checks-2026-11-21.md) |
 | Spend cap | A launch outside the allowed shapes was refused by the quota policy, before the account became Pay As You Go | [ADR 0021](docs/adr/0021-pay-as-you-go-with-guardrails.md), [#113](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/113) |
@@ -209,7 +210,7 @@ terraform/       OCI infrastructure, one root per lifecycle: k3s/, shared/, guar
 scripts/         state bootstrap, k3s tunnel and verify, public URL verify, A1 capacity retry (history)
 docs/architecture.md   How it is built and why
 docs/adr/        Architecture decision records (0001 to 0025), with an index
-docs/runbooks/   Access, k3s bootstrap, the edge, backups and restore, Sealed Secrets keys, the SLO alert, cost guardrails
+docs/runbooks/   Access, k3s bootstrap, the edge, backups and restore, Sealed Secrets keys, the SLO alert, cost guardrails, the k3s node
 docs/evidence/   Write-ups of tests run on the clusters
 docs/roadmap.md  Known limits, next steps, what changes at scale
 .github/         CI checks (Terraform fmt/validate/test, shellcheck), external probe (the slow outside check), gitleaks history scan, Dependabot
