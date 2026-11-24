@@ -14,7 +14,7 @@ Measured on the live cluster on 2026-11-24 (read-only, over the tunnel, through 
 - A page at `/status` cannot collide with a short link: a code is exactly 7 characters and `status` has 6.
 
 ## Decision
-- **A public page `GET /status`** in the link-shortener backend, with charts of: SLO error budget, availability and latency-good (7 days, 30-minute steps); redirects per second (labelled as including the probe), node CPU and memory, node network transmit and pods running (24 hours, 5-minute steps); and deploy markers (ticks on every chart, from the backend image tag, 7 days, 15-minute steps).
+- **A public page `GET /status`, named "Platform metrics"** (the landing nav says "Metrics"; the URL stays `/status`; "live" is avoided because the page is a 5-minute snapshot; decided 2026-11-24) in the link-shortener backend, with charts of: SLO error budget, availability and latency-good (7 days, 30-minute steps); redirects per second (labelled as including the probe), node CPU and memory, node network transmit and pods running (24 hours, 5-minute steps); and deploy markers (ticks on every chart, from the backend image tag, 7 days, 15-minute steps).
 - **Server-rendered SVG, no client JavaScript.** Python turns numbers into `<path>` data and the page is a cached string. Hover text is the native `<title>` element. The CSP stays `default-src 'none'; style-src 'unsafe-inline'`: no script, no hash to maintain, nothing to inject into. It works with scripts off and in `curl`. Only numbers and constants enter the markup; no label or string from Prometheus does. A commit tag is shown only after it matches a 40-hex pattern, as 7 characters.
 - **A second constant allowlist, `RANGE_QUERIES`:** tuples of key, PromQL, window and step, all in code. No window, step or query comes from a request. Only recorded series or cheap node and kube-state series are allowed; a test asserts there is no ad hoc range selector over 1 hour.
 - **Same client, same hardening as ADR 0026 (demo-app #43):** the watchdog, a total read deadline, no redirects, no proxies, strict numbers, finite only. The response cap for a range answer is 128 KiB, and a point-count cap per series and in total rejects an answer with more points than the window and step allow.
@@ -41,7 +41,7 @@ Rejected:
 - Two replicas refresh at different moments, so a reload can show data up to 5 minutes apart. The page prints the data age.
 - History is kept in memory per replica. After a restart the page shows "warming up" for a few minutes. The durable history is Prometheus itself.
 - The charts will look partly empty until about 2026-11-27 (7 days of data) and flat where the SLO is perfect. The page is honest about both.
-- Cost: nothing outside Always Free. About 100 KB of snapshot and 30 KB of page per replica (limit 128 Mi, using 53); no change to Prometheus's memory or disk.
+- Cost: nothing outside Always Free. About 100 KB of snapshot and an 83 KB page per replica (measured live on 2026-11-24; the hover targets cost most of it; limit 128 Mi, using 55 to 56); no change to Prometheus's memory or disk.
 - Order of rollout: the app merges with the feature off; a gitops change with `STATUS_HISTORY=on` turns it on after the review.
 
 ## At scale
