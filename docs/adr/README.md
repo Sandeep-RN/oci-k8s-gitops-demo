@@ -30,6 +30,7 @@ One record per decision. A record is not rewritten when things change: the statu
 | [0024](0024-secret-scanning-in-layers.md) | Secret scanning in layers: gitleaks hook, full-history gitleaks in CI, GitHub push protection; custom OCI rules (recorded later) | Accepted | |
 | [0025](0025-second-application-on-the-node-inside-a-hard-cap.md) | A second application (oncall-assistant) on the node, inside a hard resource cap owned by the platform | Accepted | |
 | [0026](0026-live-status-endpoint-allowlisted-queries-cached-snapshot.md) | A live status endpoint: allowlisted queries, a cached snapshot, no public admin UIs | Accepted | Keeps 0014 in force |
+| [0027](0027-history-charts-server-rendered-svg-from-a-cached-range-snapshot.md) | History charts: server-rendered SVG from a cached range-query snapshot, no client JavaScript | Accepted | Extends 0026 |
 
 ## Where to start
 
