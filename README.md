@@ -140,6 +140,7 @@ Every change of approach is an ADR. The index is
   and DNS switch ([2026-11-12](docs/evidence/k3s-bootstrap-2026-11-12.md)),
   cluster rebuild on the same VM
   ([2026-11-21](docs/evidence/rebuild-proof-2026-11-21.md)).
+- **Dashboards** (Grafana stays private, ADR 0014): [screenshots of the SLO, node and pod dashboards on the live k3s node](docs/evidence/grafana-dashboards-2026-11-24.md) (2026-11-24). The live, public view is [Platform metrics](https://demo.sandeeprn.in/status).
 - **Videos** (silent screen recordings): [node drain, 2:00](https://youtu.be/ypoLkJUmsCI),
   [rollout under traffic, 1:45](https://youtu.be/_CFu4mpSBlg) and
   [OKE live tour (app, ArgoCD, Grafana SLO, alerts), 9:36](https://youtu.be/jkP26YOaopc).
