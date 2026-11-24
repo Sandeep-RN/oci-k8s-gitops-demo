@@ -2,7 +2,7 @@
 
 A small service, run the way a production one should be: built, deployed,
 observed and recovered through Git, on one free Oracle Cloud VM. This repo
-holds the infrastructure (Terraform), the decisions (25 ADRs), the runbooks,
+holds the infrastructure (Terraform), the decisions (26 ADRs), the runbooks,
 the test evidence and the issue tracker. Two sibling repos hold the
 application and the Kubernetes manifests, and a third holds a second
 application, the on-call assistant.

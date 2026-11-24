@@ -267,7 +267,7 @@ Pick three to five. Do not merge two bullets into one bigger claim.
 - Put a hard spending cap on a cloud account as code (Terraform, OCI quota
   policy) and proved it by a launch it had to refuse, before enabling pay as
   you go; the service is designed to cost $0 a month.
-- Recorded 25 architecture decisions and wrote 9 runbooks; nightly PostgreSQL
+- Recorded 26 architecture decisions and wrote 9 runbooks; nightly PostgreSQL
   backups with a write-only identity, restored three times.
 - Deleted the Kubernetes cluster and rebuilt it on the same VM from Git, an
   offline key backup and a data backup: rebuilt in about 21 minutes in one
@@ -305,7 +305,7 @@ with automatic certificates, a 7-day availability SLO with burn-rate alerts
 that I proved with a planned outage, and nightly backups I have restored
 twice. On a two-node cluster I drained a node under live traffic with no
 failed request. I then moved the live site to a single free VM; the cutover
-was one pull request. 25 decisions and 9 runbooks are in the repo.
+was one pull request. 26 decisions and 9 runbooks are in the repo.
 
 ### Diagram in plain ASCII
 

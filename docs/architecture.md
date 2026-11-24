@@ -465,7 +465,7 @@ The OKE target served the site until 2026-11-12 and was destroyed on
 
 ## 12. Decision index
 
-All 25 decisions are listed in the [ADR index](adr/README.md). Start with these:
+All 26 decisions are listed in the [ADR index](adr/README.md). Start with these:
 
 - [0016](adr/0016-readiness-checks-pod-local-state-only.md): readiness checks
   only pod-local state, so a database outage gives fast 503s that the SLO counts.
