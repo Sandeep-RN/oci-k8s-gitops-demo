@@ -45,8 +45,8 @@ K="kubectl --kubeconfig $HOME/.kube/k3s.kubeconfig"     # the k3s kubeconfig, no
 $K get nodes                     # k3s-node-vnic   Ready
 ```
 
-Every command names the k3s kubeconfig because kubectl's default context on
-the laptop is a different cluster. There is one node. Details (the SSH key,
+Every command names the k3s kubeconfig, so it never depends on kubectl's
+current context (which may be unset or point at another cluster). There is one node. Details (the SSH key,
 `--no-tunnel`, the node checks, what to do when SSH fails):
 [k3s-access](k3s-access.md).
 

@@ -39,8 +39,8 @@ All commands assume the k3s tunnel is running (`scripts/k3s-tunnel.sh`, see
 K="kubectl --kubeconfig $HOME/.kube/k3s.kubeconfig"     # the k3s kubeconfig, not kubectl's default context
 ```
 
-kubectl's default context on the laptop is a different cluster, so every
-command names the k3s kubeconfig.
+Every command names the k3s kubeconfig, so it never depends on kubectl's
+current context (which may be unset or point at another cluster).
 
 ## Seal a secret (no plaintext on disk)
 

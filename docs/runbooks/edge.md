@@ -44,8 +44,8 @@ list:
 K="kubectl --kubeconfig $HOME/.kube/k3s.kubeconfig"     # the k3s kubeconfig, not kubectl's default context
 ```
 
-The laptop's default kubectl context is a different cluster, so every command
-here names the k3s kubeconfig.
+Every command here names the k3s kubeconfig, so it never depends on kubectl's
+current context (which may be unset or point at another cluster).
 
 ## Check the whole edge in one go
 
@@ -170,8 +170,8 @@ next retry):
 KUBECONFIG=$HOME/.kube/k3s.kubeconfig cmctl renew demo-sandeeprn-in-tls -n link-shortener
 ```
 
-`cmctl` does not use `$K`; without `KUBECONFIG` it would act on the laptop's
-default context, which is another cluster.
+`cmctl` does not use `$K`; without `KUBECONFIG` it would act on kubectl's
+current context, which is not necessarily this cluster.
 
 `cmctl renew` issues a new certificate and keeps serving the old one until the
 new one is ready. **Do not delete the TLS Secret instead.** Traefik would fall
