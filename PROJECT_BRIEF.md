@@ -2,9 +2,22 @@
 
 The single source of facts about this project for anything written about it
 somewhere else: a resume, a portfolio page, a profile, a post, an interview
-answer. **Last verified: 2026-11-23** (every count, the cost, the decisions,
-the alerts and the open items were checked against the repos and the issues
-that day, [#225](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/225)).
+answer. **Last full verification: 2026-11-23**
+([#225](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/225)).
+**Partly re-verified: 2026-11-26**
+([#263](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/263)).
+
+- **Checked again on 2026-11-26:** the counts of pull requests, ADRs, runbooks
+  and evidence write-ups; the state of the open items; the "Results" numbers
+  against their evidence files and issue comments (for the spend cap, the #113
+  comment); the new sections on the public pages and the AI reviews, against the
+  ADRs, pull requests, issues, the application code and read-only requests to
+  the public sites (no browser rendering); that the three video links answer.
+- **Not checked again, each keeps its earlier date:** the cost (2026-11-23),
+  Oracle's Always Free page (2026-11-13), anything that needs access to the
+  cluster or the cloud account (alerts loaded and inactive, the VM, the running
+  k3s version, pod memory and restarts), "Problems found and fixed" and "The
+  story".
 
 ## How to use this file
 
@@ -17,7 +30,7 @@ For a person, or for an AI assistant working in another project:
 3. **Do not claim what the "Not done" section lists.** Saying the limits out
    loud is part of how this project is presented.
 4. **Prefer the ready-made text** in "Ready to use" to writing new claims.
-5. **Check the date above.** Two items are still open on 2026-11-23: the
+5. **Check the dates above.** Two items are still open on 2026-11-26: the
    3-minute video (#58) and the live check of ADR 0025 (#196). "What changes
    next" at the end says which lines to update when they close. If this file
    is more than a month old, read the [README](README.md) first.
@@ -30,10 +43,10 @@ VM: GitOps delivery, an SLO with burn-rate alerts, tested backups, and every
 decision written down.
 
 **50 words.** A small link-shortener service on Kubernetes (k3s) on Oracle
-Cloud's free tier. Every change is delivered through Git: CI builds and scans
-the image, a pull request changes the tag, ArgoCD deploys it. It has HTTPS, an
-availability SLO with burn-rate alerts, nightly backups with tested restores,
-and 25 recorded decisions.
+Cloud's free tier. Every change is delivered through Git: CI builds the image
+behind a scan gate, a pull request changes the tag, ArgoCD deploys it. It has
+HTTPS, an availability SLO with burn-rate alerts, nightly backups with tested restores,
+and 27 recorded decisions.
 
 **150 words.** I wanted to run Kubernetes the way a production service should
 be run, at a cost of zero. The free ARM capacity I planned for was unavailable
@@ -54,7 +67,10 @@ Live at <https://demo.sandeeprn.in> on a single-node k3s cluster since
 2026-11-12. The OKE target served the site until 2026-11-12 and was destroyed
 on 2026-11-15 (issue [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)).
 A second application, an on-call assistant, runs on the same node at
-<https://ask.sandeeprn.in> (its numbers: "Second application" below).
+<https://ask.sandeeprn.in> (its numbers: "Second application" below). The two
+sites link to each other. Since 2026-11-23 the landing page shows live platform
+data, and since 2026-11-24 a "Platform metrics" page charts it (see "Public
+pages and live data").
 
 ## Facts
 
@@ -62,14 +78,14 @@ A second application, an on-call assistant, runs on the same node at
 |---|---|
 | Name | oci-k8s-gitops-demo |
 | Kind | Personal project. One person: design, decisions, build, operation |
-| Period | 2026-10-20 to 2026-11-14 for the build; tests and the second application to 2026-11-23; two open items below |
+| Period | 2026-10-20 to 2026-11-14 for the build; tests and the second application to 2026-11-23; the public status pages and dashboard screenshots 2026-11-23 and 24; two open items below |
 | Repos (public) | [infrastructure and docs](https://github.com/Sandeep-RN/oci-k8s-gitops-demo), [application and CI](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-app), [Kubernetes manifests](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-gitops) |
-| Live URL | <https://demo.sandeeprn.in> (landing page with a working short link; API page at `/api/docs`) |
+| Live URL | <https://demo.sandeeprn.in> (landing page with a working short link and a live data strip; "Platform metrics" at [`/status`](https://demo.sandeeprn.in/status); API page at `/api/docs`) |
 | Cloud | Oracle Cloud Infrastructure. One Always Free Ampere A1 VM: 2 OCPU, 12 GB, arm64, Ubuntu 24.04. (Oracle's [Always Free page](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm) gives 1,500 OCPU hours and 9,000 GB hours a month, "equivalent to 2 OCPUs and 12 GB of memory"; checked 2026-11-13) |
 | Kubernetes | k3s v1.36 on one node (today). OKE, two nodes, for the multi-node tests (2026-10-22 to 2026-11-12) |
-| Size of the work | On 2026-11-23 (14:00 UTC): 213 merged pull requests across the three platform repos (74 infrastructure and docs, 36 application, 103 manifests; 34 of them automated image-tag bumps, 10 from Dependabot; counted with `gh pr list --state merged`), plus 21 in the assistant's repo. 25 ADRs, 9 runbooks, 5 evidence write-ups |
+| Size of the work | On 2026-11-26 (18:00 UTC): 244 merged pull requests across the three platform repos (83 infrastructure and docs, 44 application, 117 manifests; 46 of them automated image-tag bumps, 17 of those for the assistant's image; 10 from Dependabot; counted with `gh pr list --state merged`), plus 28 in the assistant's repo. 27 ADRs, 9 runbooks, 6 evidence write-ups (the Markdown files in `docs/adr/` without the index, in `docs/runbooks/` and in `docs/evidence/`). The live landing page shows its own older counts, dated 2026-11-24 ([#264](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/264)): use these |
 | Cost | Target $0 a month. The OKE target cost about SGD 3.05 a day, paid from trial credit: SGD 44.96 in total for 2026-11-01 to 2026-11-15 (SGD 45.69 for 2026-10-22 to 2026-11-06, [evidence](docs/evidence/oke-final-2026-11-10.md)). Cost Analysis confirmed $0 for OKE from 2026-11-16: SGD 0.00 for every service on each day from 2026-11-16 to 2026-11-22, and 0.00 so far on 2026-11-23 (last charges 2026-11-15, the teardown day, [#13](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/13)). The remaining credit balance cannot be shown (the Console's subscription panel returns an error): do not claim it. The monthly budget is SGD 7, so November's SGD 44.96 (all before 2026-11-16) makes it read over budget until it resets on 2026-12-01 |
-| Second application | An on-call assistant that answers from the project's documents, live at <https://ask.sandeeprn.in>, in [its own repo](https://github.com/Sandeep-RN/oncall-assistant). Use only the numbers in the README section "A second app"; its answer quality and SLO are not measured yet |
+| Second application | An on-call assistant that answers from the project's documents, live at <https://ask.sandeeprn.in>, in [its own repo](https://github.com/Sandeep-RN/oncall-assistant). Its page links to the platform site and has a "Built with" badge row ([oncall-assistant#67](https://github.com/Sandeep-RN/oncall-assistant/pull/67), seen live 2026-11-26). Use only the numbers in the README section "A second app"; its answer quality and SLO are not measured yet |
 | Alerts on k3s | Besides the SLO burn-rate and probe alerts: six platform alerts added on 2026-11-23, each with a runbook section. Certificate expiry (`CertificateExpiringSoon`, `CertificateNotReady`, `CertManagerMetricsMissing`) and Traefik 5xx (`TraefikServerErrorsHigh`, `TraefikMetricsMissing`) in the [edge runbook](docs/runbooks/edge.md); node disk (`NodeRootDiskLow`) in the [k3s node runbook](docs/runbooks/k3s-node.md). Tested with `promtool` unit tests and checked live as loaded and inactive; none has fired on the real cluster ([#140](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/140)) |
 | Built with | An AI coding assistant, Claude Code. See "How it was built" |
 
@@ -126,6 +142,11 @@ How to quote these honestly:
   the outage began", never "detected the outage in real time".
 - "Paged" means a message in a Discord channel. There is no pager and no
   on-call rota.
+- **The image scan gate** (Trivy) scans an **amd64** build before anything is
+  pushed; CI then builds and pushes amd64 and arm64 (the app repo's
+  `.github/workflows/ci.yml`, read 2026-11-26). The arm64 image the node runs
+  is not scanned itself. Say "a scan gate before the push", never "the arm64
+  image is scanned" or "the multi-arch image is scanned".
 - **ADR 0025** (a second application inside a hard cap) is **designed, not
   verified**, until [#196](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/196)
   closes. Say "designed a hard cap for a second application", never "proved
@@ -140,6 +161,52 @@ How to quote these honestly:
 - **Restored three times**: each restore used a backup taken for it (a manual
   run of the backup job or a fresh dump), not a scheduled nightly file. The
   restore path is tested; a restore of a nightly file was not run separately.
+
+## Public pages and live data
+
+Shipped on 2026-11-23 and 24. These are not rows of "Results".
+
+| What | Facts | Source |
+|---|---|---|
+| Landing page | Rebuilt: navigation, stack badges, a diagram drawn in SVG, project numbers linking to their sources, cards, a link to the assistant | [#229](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/229), [app#40](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-app/pull/40) |
+| API page | Swagger UI moved to `/api/docs` (the old `/docs` answers 404) with a dark theme that follows the visitor's system setting. It still loads Swagger UI from a third-party CDN | [app#41](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-app/pull/41); read-only requests 2026-11-26 |
+| Live status strip | `/api/status` returns rounded aggregates (SLO, request rate, node CPU, memory and network transmit, running pods, running commit, ArgoCD sync and health). 11 fixed PromQL queries in code; a background refresh every 30 seconds into a cached snapshot; a visitor's request never calls Prometheus | [ADR 0026](docs/adr/0026-live-status-endpoint-allowlisted-queries-cached-snapshot.md), [live check in #230](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/230) (2026-11-23) |
+| "Platform metrics" page | `/status`: 8 charts as SVG drawn on the server, no JavaScript on the page, 9 fixed range queries refreshed every 5 minutes; windows of 24 hours and 7 days, with deploy markers | [ADR 0027](docs/adr/0027-history-charts-server-rendered-svg-from-a-cached-range-snapshot.md), [live check in #235](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/235) (2026-11-24) |
+| No admin UI made public | Grafana, Prometheus and ArgoCD get no public Ingress; both pages show only chosen numbers | [ADR 0014](docs/adr/0014-admin-ui-access.md), ADR 0026 |
+| Dashboard screenshots | Three Grafana dashboards on the live k3s node, captured 2026-11-24 at about 20:00 UTC: the project's own redirect SLO dashboard, a node dashboard and a per-pod dashboard | [evidence 2026-11-24](docs/evidence/grafana-dashboards-2026-11-24.md) |
+
+How to quote these honestly:
+
+- The percentages on the live pages (100% when read on 2026-11-26) are **not**
+  a measured uptime figure and **not** evidence of user traffic: the traffic is
+  about 0.03 requests a second, mostly the in-cluster probe (ADR 0027).
+- Prometheus keeps 8 days. On 2026-11-26 the 7-day charts still said they had
+  5.9 of 7 days of data. The screenshots show the last 24 hours, taken when
+  Prometheus held about 4 days, so their "7 days" SLO panels had less than 7.
+- "Live" means a cached snapshot: about 30 seconds old for the strip and about
+  5 minutes for the charts.
+- The live checks did not cover the strip's polling and hidden-tab pause or the
+  chart hover text in a real browser, nor stale or degraded-Prometheus
+  behaviour in production (#230, #235).
+
+## Independent AI security reviews
+
+Two features, and only these two among those above, had a separate security
+review: the status strip's backend and the history charts. The reviewer was an
+**AI model** in a fresh, read-only session that had not written the code. It was
+not a human reviewer, an audit or a penetration test. Each time the feature was
+merged switched off, reviewed, fixed, and only then switched on. The pull
+requests call it an "independent security review".
+
+| Feature | What the review found | What was done |
+|---|---|---|
+| Status strip ([app#42](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-app/pull/42)) | A Prometheus that dribbled its answer slowly left query threads stuck (6 per refresh, never ending); a 1 MiB answer cap let one refresh peak at 125.8 MiB in a pod limited to 128 Mi; weak tests; smaller points, such as a 503 before the first refresh that would count toward the server-error alert | Fixed in [app#43](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-app/pull/43): at most 3 stuck threads, which end by themselves; a 64 KiB cap, 4.8 MiB peak; real-socket tests; 200 with `available: false` ([ADR 0026](docs/adr/0026-live-status-endpoint-allowlisted-queries-cached-snapshot.md), amended). One low finding was left on purpose. Then switched on ([gitops#111](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-gitops/pull/111)) |
+| History charts ([app#45](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-app/pull/45)) | No high finding. Two medium: one tiny number from Prometheus blanked every chart, and the memory chart showed no data if there were two series. Also weak tests and smaller faults, such as a missing deploy marker after a rollback | Fixed in [app#46](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-app/pull/46), then switched on ([gitops#115](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-gitops/pull/115)). A follow-up hygiene change for the status strip ([#244](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/244), [app#48](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-app/pull/48)) was merged on 2026-11-26. The build after the merge failed the image scan on a new finding in the base image, so the change reached the site only with that fix ([#266](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/266), [app#49](https://github.com/Sandeep-RN/oci-k8s-gitops-demo-app/pull/49)), at about 19:10 UTC that day, and was then [checked live](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/244#issuecomment-7201389048) |
+
+The before and after numbers are from the reviewer's test scripts and the
+branch's tests, not from production. The landing page rebuild, the API page and
+the screenshots had no such review: do not extend the claim to them or to the
+platform as a whole.
 
 ## The story
 
@@ -185,8 +252,10 @@ How to quote these honestly:
 | No load balancer on k3s | Real client IPs and no cost; the price is no redundancy at the edge | [0022](docs/adr/0022-moving-the-demo-from-oke-to-k3s.md) |
 | One node on the free tier | $0 a month; high availability is given up, and said so | [0001](docs/adr/0001-single-node-k3s-on-always-free-a1.md) |
 | A second application on the same node, inside a hard cap: its own namespace, a quota of 1 GiB of memory and 1 CPU for everything in it, and a lower priority than the link shortener | The free tier gives one node, so the second app must not be able to starve the first. **Designed, not yet verified:** the live check is [#196](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/196), still open | [0025](docs/adr/0025-second-application-on-the-node-inside-a-hard-cap.md) |
+| Live data on the public site comes from fixed queries and a cached snapshot, not from public admin tools | Visitors see how the platform behaves; Prometheus has no authentication, and a public Grafana or ArgoCD is a large attack surface | [0026](docs/adr/0026-live-status-endpoint-allowlisted-queries-cached-snapshot.md) |
+| History charts drawn on the server as SVG, with no client JavaScript | No script to allow or review in the browser and no charting library | [0027](docs/adr/0027-history-charts-server-rendered-svg-from-a-cached-range-snapshot.md) |
 
-All 25: [docs/adr/README.md](docs/adr/README.md).
+All 27: [docs/adr/README.md](docs/adr/README.md).
 
 ## Problems found and fixed
 
@@ -229,6 +298,12 @@ Do not claim any of these.
   still open.
 - **A real firing of the k3s platform alerts.** Unit-tested only
   ([#140](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/140)).
+- **A human security review, an audit or a penetration test.** The only
+  reviews of the public status features were by an AI model (see "Independent AI
+  security reviews").
+- **Public dashboards.** Grafana is private; the public has two pages of chosen
+  numbers and three screenshots.
+- **Real user traffic.** The live pages show mostly the platform's own probe.
 
 The full list, with what would come next: [docs/roadmap.md](docs/roadmap.md).
 
@@ -238,8 +313,10 @@ Built between 2026-10-20 and 2026-11-14 with an AI coding assistant (Claude
 Code). The assistant wrote much of the YAML, Terraform and scripts, and first
 drafts of the docs. The owner made the decisions, applied the infrastructure,
 ran or supervised every live test, and reviewed and merged the pull requests.
-A second model reviewed the first ADRs and found real errors. The `CLAUDE.md`
-files in the three repos are the instructions given to the assistant.
+A second model reviewed the first ADRs and found real errors. On 2026-11-23 and
+24 a separate AI session also security-reviewed the status strip and the history
+charts before they were switched on. The `CLAUDE.md` files in the three repos
+are the instructions given to the assistant.
 
 When this project is described anywhere, say this plainly if asked. The skill
 shown is deciding, verifying and operating, not typing YAML.
@@ -267,11 +344,15 @@ Pick three to five. Do not merge two bullets into one bigger claim.
 - Put a hard spending cap on a cloud account as code (Terraform, OCI quota
   policy) and proved it by a launch it had to refuse, before enabling pay as
   you go; the service is designed to cost $0 a month.
-- Recorded 26 architecture decisions and wrote 9 runbooks; nightly PostgreSQL
+- Recorded 27 architecture decisions and wrote 9 runbooks; nightly PostgreSQL
   backups with a write-only identity, restored three times.
 - Deleted the Kubernetes cluster and rebuilt it on the same VM from Git, an
   offline key backup and a data backup: rebuilt in about 21 minutes in one
   run, every database row back, `terraform plan` empty before and after.
+- Published live platform metrics without making Grafana or Prometheus public
+  (fixed query allowlist, cached snapshot, server-drawn SVG charts), and
+  switched each of the two features on only after a separate AI security review
+  and fixes for its medium findings.
 
 ### Portfolio card
 
@@ -298,14 +379,14 @@ Terraform, an SLO with burn-rate alerts, tested backups. Live at
 demo.sandeeprn.in.
 
 **Project description (about 100 words).** A link-shortener service run as a
-production one should be, on Oracle Cloud's free tier. GitHub Actions builds,
-scans and pushes a multi-arch image, a pull request changes the tag, and
+production one should be, on Oracle Cloud's free tier. GitHub Actions passes a
+scan gate and pushes a multi-arch image, a pull request changes the tag, and
 ArgoCD deploys it: about 7 minutes from merge to live. The service has HTTPS
 with automatic certificates, a 7-day availability SLO with burn-rate alerts
-that I proved with a planned outage, and nightly backups I have restored
-twice. On a two-node cluster I drained a node under live traffic with no
-failed request. I then moved the live site to a single free VM; the cutover
-was one pull request. 26 decisions and 9 runbooks are in the repo.
+that I proved with a planned outage, and nightly backups with a restore path I
+have used three times. On a two-node cluster I drained a node under live
+traffic with no failed request. I then moved the live site to a single free VM;
+the cutover was one pull request. 27 decisions and 9 runbooks are in the repo.
 
 ### Diagram in plain ASCII
 
@@ -339,6 +420,9 @@ For pages that cannot render Mermaid.
 ## Links
 
 - Live site: <https://demo.sandeeprn.in>
+- Platform metrics: <https://demo.sandeeprn.in/status>; API page: <https://demo.sandeeprn.in/api/docs>
+- Second application: <https://ask.sandeeprn.in>
+- Dashboard screenshots: [Grafana, 2026-11-24](docs/evidence/grafana-dashboards-2026-11-24.md)
 - Start here: [README](README.md), then [docs/architecture.md](docs/architecture.md)
 - Decisions: [docs/adr/README.md](docs/adr/README.md)
 - Proof: [docs/evidence/](docs/evidence/)
@@ -350,10 +434,13 @@ For pages that cannot render Mermaid.
 
 Update this file, then everything written from it, when these close.
 #13 (Cost Analysis, closed 2026-11-16) and #57 (rebuild proof, closed
-2026-11-20) are done and already reflected above.
+2026-11-20) are done and already reflected above. On 2026-11-26 neither #58 nor
+#196 had closed.
 
 | When | Change |
 |---|---|
 | The 3-minute video is recorded and [#58](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/58) closes | Add the video to "Links" and to the README's "Evidence"; set the portfolio card to `status: "done"` (#196 does not block the card: it is the second application's check) |
 | [#196](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/196) closes (ADR 0025 on the live node, including 7 days of the link shortener's SLO unaffected) | "Decisions": change ADR 0025 from "designed, not yet verified" to what #196 measured; drop its quoting rule or replace it with the measured result |
 | Optional: the final credit balance can be read in OCI Billing | "Facts", Cost: add it. Until then do not claim it |
+| [#219](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/219) closes (November invoice and budget, dated 2026-12-02 to 12-05) | "Facts", Cost: add what it recorded. Until then claim nothing about cost after 2026-11-23 || [#264](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/264) closes (landing page numbers) | "Facts", Size of the work: drop or change the note about the landing page |
+| The 7-day charts on `/status` hold a full 7 days (check the page) | "Public pages and live data": drop the "5.9 of 7 days" sentence |
