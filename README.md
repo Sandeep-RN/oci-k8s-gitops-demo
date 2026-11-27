@@ -2,15 +2,16 @@
 
 A small service, run the way a production one should be: built, deployed,
 observed and recovered through Git, on one free Oracle Cloud VM. This repo
-holds the infrastructure (Terraform), the decisions (26 ADRs), the runbooks,
+holds the infrastructure (Terraform), the decisions (27 ADRs), the runbooks,
 the test evidence and the issue tracker. Two sibling repos hold the
 application and the Kubernetes manifests, and a third holds a second
 application, the on-call assistant.
 
-> **Status (2026-11-23):** live at
+> **Status (2026-11-27):** live at
 > **[demo.sandeeprn.in](https://demo.sandeeprn.in/)** on a single-node k3s
 > cluster (one Always Free Ampere A1 VM). The landing page has a working short
-> link; the API page is at `/api/docs`. A second application, an on-call
+> link and live platform data, [Platform metrics](https://demo.sandeeprn.in/status)
+> charts it, and the API page is at `/api/docs`. A second application, an on-call
 > assistant, runs on the same node at
 > **[ask.sandeeprn.in](https://ask.sandeeprn.in/)**
 > ([below](#a-second-app-the-on-call-assistant)).
@@ -53,7 +54,7 @@ The full picture, with the reasons, is in
 |---|---|
 | Infrastructure | Terraform: network, one A1 VM, a backup bucket with write-only access, a tenancy quota policy and a budget |
 | Cluster | k3s on Ubuntu 24.04 (arm64), ArgoCD app of apps, Sealed Secrets |
-| Delivery | GitHub Actions: test, build for amd64 and arm64, Trivy scan, push. Then a tag-bump pull request merges itself and ArgoCD applies it |
+| Delivery | GitHub Actions: test, Trivy scan of an amd64 build, then build and push for amd64 and arm64 (the arm64 image itself is not scanned). Then a tag-bump pull request merges itself and ArgoCD applies it |
 | Edge | Traefik, cert-manager (Let's Encrypt, DNS-01), external-dns, HSTS, a rate limit per client, token-gated link creation |
 | App | FastAPI link shortener, 2 replicas, PostgreSQL with nightly dumps to Object Storage |
 | Observability | Prometheus, Alertmanager, Grafana; a 7-day SLO with burn-rate alerts to Discord; probes from inside and outside the cluster; alerts for certificate expiry, Traefik 5xx and node disk, each with a runbook (unit-tested, none has fired yet) |
@@ -69,7 +70,7 @@ The full picture, with the reasons, is in
 | A whole cluster from Git | On a new k3s node, all 10 ArgoCD Applications were Synced and Healthy 3.5 minutes after the root Application was applied (after the key restore and the ArgoCD install) | [evidence](docs/evidence/k3s-bootstrap-2026-11-12.md) |
 | Moving the live site to another cluster | The cutover was one pull request. The DNS record was absent for 25 seconds. All 34 rows restored | [evidence](docs/evidence/k3s-bootstrap-2026-11-12.md) |
 | Deleting the cluster and rebuilding it on the same VM | 20 min 36 s from the end of the uninstall to the data restored: 10 Applications healthy after 17 min 57 s, all 38 rows back, `terraform plan` empty before and after. Includes the time a person needed; the VM itself was not rebuilt | [evidence](docs/evidence/rebuild-proof-2026-11-21.md) |
-| Backup and restore | Nightly dumps. Restore drilled on 2026-10-25 and done for real in the move on 2026-11-12 | [runbook](docs/runbooks/postgres-backup-restore.md) |
+| Backup and restore | Nightly dumps. Restored three times: a drill on 2026-10-25, for real in the move on 2026-11-12, and in the rebuild on 2026-11-21 ([evidence](docs/evidence/rebuild-proof-2026-11-21.md)) | [runbook](docs/runbooks/postgres-backup-restore.md) |
 | Sealed Secrets key renewal | The controller made its second key on 2026-11-23 at 07:57 UTC, exactly 30 days after the first key's certificate started. Both keys were backed up offline the same day, with their fingerprints checked against the cluster, before the repository's certificate was refreshed. The 13 secrets sealed earlier kept decrypting | [runbook](docs/runbooks/sealed-secrets.md), [#216](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/216) |
 | Image scan gate | Blocked a real HIGH CVE before the image was pushed | [evidence](docs/evidence/oke-final-2026-11-10.md) |
 | Rate limit per client | One client's burst of 600 requests got 282 answers of 429. While a laptop got 1410 x 429 over a 60 second flood, a phone on mobile data was served normally on every reload | [#115](https://github.com/Sandeep-RN/oci-k8s-gitops-demo/issues/115), [evidence](docs/evidence/k3s-live-checks-2026-11-21.md) |
@@ -190,9 +191,9 @@ What comes next, and what would change at scale:
 I built the platform between 2026-10-20 and 2026-11-14 to practise running
 Kubernetes the way I would want it run in production, then kept testing and
 adding to it (the cluster rebuild on 2026-11-20 and 21, the assistant from
-2026-11-18). Every change went through a pull request: on 2026-11-23, 213
-merged across the three platform repos (34 of them automated image tag bumps,
-10 from Dependabot) and 21 more in the assistant's repo. Every change of
+2026-11-18). Every change went through a pull request: on 2026-11-26 (18:00
+UTC), 244 merged across the three platform repos (46 of them automated image
+tag bumps, 10 from Dependabot) and 28 more in the assistant's repo. Every change of
 approach is an ADR. Every claim on this page links to a test that was run on a live cluster.
 
 I used an AI coding assistant (Claude Code) throughout. It wrote much of the
@@ -210,7 +211,7 @@ assistant.
 terraform/       OCI infrastructure, one root per lifecycle: k3s/, shared/, guardrails/
 scripts/         state bootstrap, k3s tunnel and verify, public URL verify, A1 capacity retry (history)
 docs/architecture.md   How it is built and why
-docs/adr/        Architecture decision records (0001 to 0025), with an index
+docs/adr/        Architecture decision records (0001 to 0027), with an index
 docs/runbooks/   Access, k3s bootstrap, the edge, backups and restore, Sealed Secrets keys, the SLO alert, cost guardrails, the k3s node
 docs/evidence/   Write-ups of tests run on the clusters
 docs/roadmap.md  Known limits, next steps, what changes at scale
