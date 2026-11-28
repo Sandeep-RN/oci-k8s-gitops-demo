@@ -23,10 +23,11 @@ step 2 has passed.**
 | Boot + block volumes | 250 GB | 200 GB |
 | Volume backups / replicas | 5 / 0 GB | 5 / 0 GB |
 | Classic load balancers | 0 | 0 |
+| OKE clusters and virtual nodes (#276) | not capped | 0 |
 | Budget (whole tenancy) | email at SGD 1 actual, at 100% actual, at 100% forecast | same |
 
-Not capped, only watched by the budget: Network Load Balancers, OKE
-clusters, Object Storage, data transfer and all other services.
+Not capped, only watched by the budget: Network Load Balancers, Object
+Storage, data transfer and all other services.
 
 ## 1. Apply (owner)
 
@@ -56,7 +57,7 @@ not from the docs page.
 ## 2. Prove the quota blocks (before the upgrade)
 
 **a. The Console:** Governance & Administration > Quota Policies shows
-`oci-k8s-gitops-demo-cost-guardrails` with 10 statements, in order (12 until the E5 statements were removed, #182).
+`oci-k8s-gitops-demo-cost-guardrails` with 11 statements, in order (12 until the E5 statements were removed, #182; 10 until the OKE line was added, #276).
 
 **b. Effective quotas** (read-only). `effective-quota-value` is present only
 when a quota applies:

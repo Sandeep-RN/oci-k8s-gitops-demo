@@ -43,6 +43,11 @@ locals {
     # none (ServiceLB on the node IP). The free Network Load Balancer is a
     # different service and has no quota; the budget covers it.
     "zero load-balancer quotas in tenancy",
+
+    # OKE: none since the teardown (#13), so cap basic, enhanced and virtual
+    # node counts at 0 (#276; checked on the live tenancy 2026-11-28). Remove
+    # this line, in a reviewed change, before building an OKE cluster again.
+    "zero container-engine quotas in tenancy",
   ]
 }
 

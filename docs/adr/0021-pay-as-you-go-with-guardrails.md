@@ -40,5 +40,8 @@ Order: apply the guardrails, prove a quota blocks (a launch the quota must refus
 - OCI allows **one budget per target compartment**. The first apply failed with `400-LimitExceeded, 1 budgets already exist in target compartment` because a budget made earlier in the Console also targeted the root. The owner deleted it, and the second apply succeeded (2026-11-10). The quota policy had already been created by the failed run; Terraform kept it in state and only created the rest. Any future budget on the root has to be an alert rule on this one, not a second budget.
 - No non-free resource is created by this ADR.
 
+## Amendment 2026-11-28: OKE is capped (#276)
+`oci limits definition list --service-name container-engine` on the live tenancy shows quota support for `cluster-count`, `enhanced-cluster-count` and `virtual-node-count`, all with 0 in use. The policy now has `zero container-engine quotas in tenancy`, so OKE moves from "only watched" to "capped". `node-count` has no quota support, and needs none when no cluster can be created. Rebuilding the OKE target (ADR 0015) means removing that line first.
+
 ## At scale
 In an organisation, the same split: quotas per compartment or team as hard caps, budgets per cost centre (tag-based targets) as alarms. Add an automated response to a budget event (for example, stopping instances tagged as disposable), an approval workflow for limit and quota increases, and cost reports reviewed on a schedule rather than only when an email arrives.
