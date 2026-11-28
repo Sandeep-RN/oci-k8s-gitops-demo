@@ -101,3 +101,24 @@ jobs:
       # Stubs replace terraform, the OCI CLI and sleep: no cloud calls.
       - name: a1-wait-and-apply offline test
         run: bash scripts/tests/a1-wait-and-apply.test.sh
+
+  # The one name branch protection requires from this workflow (#273). Matrix
+  # job names carry the Terraform version, so requiring them directly would
+  # block every PR after a version change. Add every new job to `needs`.
+  checks-ok:
+    needs: [terraform, shellcheck, script-tests]
+    # always(): without it a failed dependency SKIPS this job, and GitHub counts
+    # a skipped required check as passing.
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every job above succeeded
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        # Anything but "success" fails, including cancelled and skipped.
+        run: |
+          echo "results: $RESULTS"
+          for r in $RESULTS; do
+            [ "$r" = success ] || exit 1
+          done
